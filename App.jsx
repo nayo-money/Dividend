@@ -17,15 +17,15 @@ import {
 } from 'lucide-react';
 
 /**
- * nayo money 股利工具 v16.1 - 極致 RWD 旗艦穩定版
+ * nayo money 股利工具 v16.2 - 全面響應式 (RWD) 終極穩定版
  * 更新重點：
- * 1. 導覽列 RWD 進化：電腦版改為「右下懸浮膠囊」，手機版維持扁平底部列，徹底解決遮擋問題。
- * 2. 佈局縮排：電腦版增加側邊縮排，版面更置中。
- * 3. 輸入法終極修正：數字欄位點擊自動清空 0，解決「090」輸入尷尬。
- * 4. 列表 RWD：投入與領息紀錄在大螢幕自動展開為多欄網格。
+ * 1. 導覽列 RWD 進化：電腦版改為「右下懸浮膠囊」且右側縮排，手機版維持扁平底部列。
+ * 2. 輸入法修正：數字欄位點擊自動清空 0，解決「090」輸入尷尬，提升操作手感。
+ * 3. 佈局縮排：大螢幕下內容區增加側邊 Gutter，視覺更精緻。
+ * 4. 品牌視覺：動態 Favicon (綠底 $) 與 document.title 持續運作。
  */
 
-// --- 0. 樣式修復 ---
+// --- 0. 樣式修復：自動注入 Tailwind CDN ---
 if (typeof document !== 'undefined') {
   const tailwindScript = document.getElementById('tailwind-cdn');
   if (!tailwindScript) {
@@ -52,10 +52,10 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'nayo-money-official';
 
-// --- 2. 智慧型 RWD 輸入組件 ---
+// --- 2. 智慧型 RWD 輸入組件 (解決 0 刪不掉的問題) ---
 const SmartInput = ({ value, onChange, className, type = "text", placeholder }) => {
   const handleFocus = (e) => {
-    // 💡 點擊時如果只有 0，自動消失，方便直接打數字
+    // 💡 點擊時如果只有 0，自動清空，方便直接輸入數字
     if (String(value) === "0" || String(value) === "") {
       onChange("");
     } else {
@@ -64,7 +64,7 @@ const SmartInput = ({ value, onChange, className, type = "text", placeholder }) 
   };
 
   const handleBlur = (e) => {
-    // 💡 離開時如果沒打字，補回 0
+    // 💡 離開時如果內容為空，補回預設值 0
     if (e.target.value === "") {
       onChange("0");
     }
@@ -74,7 +74,7 @@ const SmartInput = ({ value, onChange, className, type = "text", placeholder }) 
     <input
       type={type}
       inputMode={type === "number" ? "numeric" : "text"}
-      className={`${className} text-xs md:text-sm font-black py-1.5 px-2 text-slate-800 outline-none transition-all border border-slate-200 rounded-lg focus:ring-2 ring-[#8B9D83]/20 bg-white`}
+      className={`${className} text-xs md:text-sm font-black py-1 px-2 text-slate-800 outline-none transition-all border border-slate-200 rounded-lg focus:ring-2 ring-[#8B9D83]/20 bg-white`}
       value={value}
       placeholder={placeholder}
       onFocus={handleFocus}
@@ -99,10 +99,12 @@ export default function App() {
   const [transactions, setTransactions] = useState([]); 
   const [filterMember, setFilterMember] = useState('all');
 
+  // 本地編輯暫存區
   const [editTx, setEditTx] = useState({});
   const [editDiv, setEditDiv] = useState({});
   const [editSym, setEditSym] = useState({});
 
+  // 瀏覽器標題與 Favicon
   useEffect(() => {
     document.title = "nayo money股利工具";
     const faviconSvg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='30' fill='%238B9D83'/><text y='72' x='28' font-size='60' font-weight='bold' fill='white' font-family='Arial'>$</text></svg>`.trim();
@@ -209,18 +211,18 @@ export default function App() {
   if (loading) return (
     <div className="min-h-screen bg-[#F8F5F0] flex flex-col items-center justify-center font-bold text-[#8B9D83]">
       <RefreshCw size={32} className="animate-spin mb-2" />
-      <p className="text-xs uppercase tracking-widest italic">nayo money loading...</p>
+      <p className="text-xs uppercase tracking-widest italic">nayo money booting...</p>
     </div>
   );
 
   if (!user) return (
-    <div className="min-h-screen bg-[#F8F5F0] flex items-center justify-center p-6 text-center font-sans">
-      <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl border border-[#D9C5B2]/20 text-center animate-in zoom-in duration-500">
+    <div className="min-h-screen bg-[#F8F5F0] flex items-center justify-center p-6 text-center">
+      <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl border border-[#D9C5B2]/20 animate-in zoom-in duration-500">
         <div className="bg-[#8B9D83] p-7 rounded-[2rem] text-white shadow-xl mb-6 mx-auto w-20 h-20 flex items-center justify-center">
           <ShieldCheck size={44} />
         </div>
         <h1 className="text-3xl font-black text-[#4A4A4A] tracking-tighter">nayo money</h1>
-        <p className="text-[#8B9D83] text-sm mt-3 font-bold mb-10 italic text-center">全家人的理財指揮官</p>
+        <p className="text-[#8B9D83] text-sm mt-3 font-bold mb-10 italic">全家人的理財指揮官</p>
         <button onClick={handleGoogleLogin} className="w-full bg-white border-2 border-slate-100 py-4 rounded-2xl flex items-center justify-center gap-4 font-black text-slate-700 hover:bg-slate-50 transition-all shadow-md active:scale-95 mx-auto">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G" className="w-6 h-6" />
           Google 帳號登入
@@ -232,6 +234,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F8F5F0] text-slate-900 pb-20 md:pb-8 font-sans select-none overflow-x-hidden">
+      {/* 頂部 Header - RWD 佈局 */}
       <header className="bg-[#8B9D83] text-white py-2 px-4 sticky top-0 z-50 shadow-md">
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -248,10 +251,12 @@ export default function App() {
         </div>
       </header>
 
+      {/* 主內容區 - 增加側邊縮排以提升質感 */}
       <main className="max-w-7xl mx-auto p-4 md:p-10 lg:p-16 space-y-6 lg:space-y-10">
         
         {activeTab === 'overview' && (
-          <div className="space-y-6 lg:space-y-12 animate-in fade-in duration-300">
+          <div className="space-y-6 lg:space-y-12 animate-in fade-in duration-300 text-left">
+            {/* 指標卡片 - 電腦版 4 欄 */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
               <StatCard title="總投入" value={`$${Math.round(stats.totalCost).toLocaleString()}`} sub="家庭成本" color="#4A4A4A" />
               <StatCard title="總市值" value={`$${Math.round(stats.totalMarketValue).toLocaleString()}`} sub="目前估值" color="#3B82F6" />
@@ -264,7 +269,7 @@ export default function App() {
                 <h3 className="font-black text-slate-800 text-xs md:text-sm tracking-widest uppercase border-b-2 pb-2 mb-4 flex items-center gap-2"><Globe size={16} className="text-[#8B9D83]"/> 標的回本監測盤</h3>
                 {stats.items.length === 0 ? <p className="text-center text-slate-400 text-sm py-12 italic">暫無資料</p> : 
                   stats.items.map(p => (
-                    <div key={p.name} className="space-y-2 bg-slate-50/50 p-4 rounded-2xl border border-transparent hover:border-[#8B9D83]/20 transition shadow-sm mb-3 text-left">
+                    <div key={p.name} className="space-y-2 bg-slate-50/50 p-4 rounded-2xl border border-transparent hover:border-[#8B9D83]/20 transition shadow-sm mb-3">
                       <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setExpandedSymbol(expandedSymbol === p.name ? null : p.name)}>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-black uppercase text-slate-700">{p.name}</span>
@@ -293,10 +298,10 @@ export default function App() {
                 }
               </div>
 
-              <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-slate-100 h-fit">
-                <h3 className="font-black text-slate-800 text-xs md:text-sm tracking-widest uppercase border-b-2 pb-2 mb-4 flex items-center gap-2"><BarChart size={16} className="text-[#8B9D83]"/> 每月領息現金流</h3>
+              <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-slate-100 h-fit text-left">
+                <h3 className="font-black text-slate-800 text-xs md:text-sm tracking-widest uppercase border-b-2 pb-2 mb-4 flex items-center gap-2 text-left"><BarChart size={16} className="text-[#8B9D83]"/> 每月領息現金流</h3>
                 <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 font-mono">
-                  {stats.monthly.length === 0 ? <p className="text-center text-slate-400 text-sm py-12 italic text-center mx-auto">暫無歷史數據</p> : 
+                  {stats.monthly.length === 0 ? <p className="text-center text-slate-400 text-sm py-12 italic text-center mx-auto">暫無數據</p> : 
                     stats.monthly.map(([month, amount]) => (
                       <div key={month} className="flex justify-between items-center p-4 bg-[#F2E8D5]/40 rounded-2xl shadow-sm hover:bg-[#F2E8D5]/60 transition-colors">
                         <span className="text-xs font-black uppercase tracking-wider text-slate-600">{month} 合計</span>
@@ -310,9 +315,9 @@ export default function App() {
           </div>
         )}
 
-        {/* 投入紀錄 - RWD 橫向網格 */}
+        {/* 投入紀錄 - RWD 網格佈局 */}
         {activeTab === 'invest' && (
-          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 text-left">
             {!isReady ? ( <SetupGuide onGo={() => setActiveTab('masters')} /> ) : (
               <>
                 <div className="flex justify-between items-center px-2">
@@ -368,9 +373,9 @@ export default function App() {
           </div>
         )}
 
-        {/* 領息紀錄 - RWD 多欄排版 */}
+        {/* 領息紀錄 - RWD 排版 */}
         {activeTab === 'dividends' && (
-          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 text-left">
             {!isReady ? ( <SetupGuide onGo={() => setActiveTab('masters')} /> ) : (
               <>
                 <div className="flex justify-between items-center px-2 text-slate-800">
@@ -417,10 +422,10 @@ export default function App() {
 
         {/* 管理分頁 */}
         {activeTab === 'masters' && (
-          <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-300 text-slate-900 pb-16">
+          <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-300 text-slate-900 pb-16 text-left">
             <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-sm space-y-10 border border-slate-50 text-left">
                <div className="space-y-4">
-                 <h3 className="font-black text-xs md:text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2"><Users size={16}/> 人員管理中心</h3>
+                 <h3 className="font-black text-xs md:text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2 justify-center md:justify-start"><Users size={16}/> 人員管理中心</h3>
                  <div className="flex gap-2 max-w-sm">
                    <SmartInput id="memIn" placeholder="人員名稱" className="flex-1 shadow-inner py-2.5 px-4" onChange={() => {}} />
                    <button onClick={async () => {
@@ -438,9 +443,9 @@ export default function App() {
                  </div>
                </div>
 
-               <div className="border-t border-slate-50 pt-10 space-y-4">
-                 <h3 className="font-black text-xs md:text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2"><Globe size={16}/> 股票代碼與市價設定</h3>
-                 <div className="flex gap-2 max-w-sm">
+               <div className="border-t border-slate-50 pt-10 space-y-4 text-left">
+                 <h3 className="font-black text-xs md:text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2 justify-center md:justify-start"><Globe size={16}/> 股票代碼與市價設定</h3>
+                 <div className="flex gap-2 max-w-sm text-left">
                    <SmartInput id="symbolIn" placeholder="例如: 0050" className="flex-1 uppercase shadow-inner py-2.5 px-4" onChange={() => {}} />
                    <button onClick={async () => {
                      const el = document.getElementById('symbolIn'); const val = el.value.toUpperCase().trim();
@@ -473,6 +478,7 @@ export default function App() {
                  </div>
                </div>
 
+               {/* 推薦服務廣告區塊 */}
                <div className="border-t-2 border-[#8B9D83]/10 pt-12 pb-6 text-center mx-auto">
                  <div className="inline-block group mx-auto">
                    <a href="https://nayomoney.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-5 bg-[#8B9D83]/10 px-10 py-6 rounded-[2.5rem] border-2 border-transparent group-hover:border-[#8B9D83]/20 transition-all shadow-md active:scale-95 mx-auto">
@@ -492,9 +498,10 @@ export default function App() {
         )}
       </main>
 
-      {/* 底部導覽 - RWD 智慧佈局 (解決紅框太高的問題) */}
+      {/* 底部導覽 - RWD 右下懸浮智慧佈局 (解決遮擋與高度問題) */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none md:pb-8 md:px-12 lg:px-24">
         <div className="max-w-7xl mx-auto w-full flex justify-center md:justify-end pointer-events-auto">
+          {/* 電腦版轉為右側懸浮膠囊，手機版維持滿版底部列 */}
           <div className="bg-white/95 backdrop-blur-xl border border-slate-200 px-6 md:px-10 py-2 md:py-4 shadow-[0_-8px_40px_rgba(0,0,0,0.08)] md:shadow-2xl flex justify-around items-center h-16 md:h-20 w-full md:w-fit md:rounded-full md:gap-10 lg:gap-16 animate-in slide-in-from-bottom-10 duration-700">
             <NavBtn active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<Activity size={26}/>} label="監測" />
             <NavBtn active={activeTab === 'dividends'} onClick={() => setActiveTab('dividends')} icon={<DollarSign size={26}/>} label="領息" />
