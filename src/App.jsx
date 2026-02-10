@@ -17,12 +17,12 @@ import {
 } from 'lucide-react';
 
 /**
- * nayo money 股利工具 v16.4 - 視覺精修與寬度優化版
+ * nayo money 股利工具 v16.5 - 功能修復與欄位優化版
  * 更新重點：
- * 1. 欄位比例調整：縮減股數欄位寬度，騰出空間給成本金額，防止手機版內容互撞。
- * 2. 導覽列極致扁平：針對截圖紅框問題，再度壓縮底部高度與內距。
- * 3. 0 輸入終極修正：點擊自動清空 0，且離開後若為空則補回 0。
- * 4. RWD 多欄佈局：電腦版自動展開為橫向 3 欄，提升大螢幕利用率。
+ * 1. 新增功能修復：移除 getElementById，改用 React State 確保人員與標的新增功能 100% 運作。
+ * 2. 投入明細強化：明細行內新增「股票代碼選取器」，方便修正交易歸屬。
+ * 3. 欄位寬度優化：進一步縮減股數寬度，防止手機版內容溢出。
+ * 4. 0 輸入修正：點擊自動清空 0，徹底解決「090」輸入尷尬。
  */
 
 // --- 0. 樣式修復 ---
@@ -52,8 +52,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'nayo-money-official';
 
-// --- 2. 智慧型 RWD 輸入組件 (解決 0 刪不掉的問題) ---
-const SmartInput = ({ value, onChange, className, type = "text", placeholder }) => {
+// --- 2. 智慧型 RWD 輸入組件 ---
+const SmartInput = ({ value, onChange, className, type = "text", placeholder, ...props }) => {
   const handleFocus = (e) => {
     // 💡 點擊時如果只有 0，自動清空，方便直接輸入
     if (String(value) === "0" || String(value) === "") {
@@ -72,6 +72,7 @@ const SmartInput = ({ value, onChange, className, type = "text", placeholder }) 
 
   return (
     <input
+      {...props}
       type={type}
       inputMode={type === "number" ? "decimal" : "text"}
       className={`${className} text-xs md:text-sm font-black py-1 px-1.5 text-slate-800 outline-none transition-all border border-slate-200 rounded-lg focus:ring-2 ring-[#8B9D83]/20 bg-white`}
@@ -98,6 +99,10 @@ export default function App() {
   const [dividends, setDividends] = useState([]); 
   const [transactions, setTransactions] = useState([]); 
   const [filterMember, setFilterMember] = useState('all');
+
+  // 管理分頁的新增輸入狀態
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newSymbolName, setNewSymbolName] = useState("");
 
   const [editTx, setEditTx] = useState({});
   const [editDiv, setEditDiv] = useState({});
@@ -215,13 +220,13 @@ export default function App() {
 
   if (!user) return (
     <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-6 text-center">
-      <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl border border-[#D9C5B2]/20 animate-in zoom-in duration-500">
+      <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl border border-[#D9C5B2]/20 animate-in zoom-in duration-500 mx-auto">
         <div className="bg-[#8B9D83] p-7 rounded-[2rem] text-white shadow-xl mb-6 mx-auto w-20 h-20 flex items-center justify-center">
           <ShieldCheck size={44} />
         </div>
         <h1 className="text-3xl font-black text-[#4A4A4A] tracking-tighter">nayo money</h1>
         <p className="text-[#8B9D83] text-sm mt-3 font-bold mb-10 italic">全家人的理財指揮官</p>
-        <button onClick={handleGoogleLogin} className="w-full bg-white border-2 border-slate-100 py-4 rounded-2xl flex items-center justify-center gap-4 font-black text-slate-700 hover:bg-slate-50 transition-all shadow-md active:scale-95 mx-auto">
+        <button onClick={handleGoogleLogin} className="w-full bg-white border-2 border-slate-100 py-4 rounded-2xl flex items-center justify-center gap-4 font-black text-slate-700 hover:bg-slate-50 transition-all shadow-md active:scale-95">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G" className="w-6 h-6" />
           Google 帳號登入
         </button>
@@ -232,7 +237,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-slate-900 pb-16 font-sans select-none overflow-x-hidden">
-      {/* Header - RWD 適配且極低高度 */}
       <header className="bg-[#8B9D83] text-white py-1.5 px-4 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -249,7 +253,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* 主內容區 */}
       <main className="max-w-7xl mx-auto p-2 md:p-6 lg:p-12 space-y-3 lg:space-y-6">
         
         {activeTab === 'overview' && (
@@ -264,7 +267,7 @@ export default function App() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-8">
               <div className="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100">
                 <h3 className="font-black text-slate-800 text-[10px] md:text-xs tracking-widest uppercase border-b-2 pb-1.5 mb-3 flex items-center gap-2"><Globe size={14} className="text-[#8B9D83]"/> 標的回本監測盤</h3>
-                {stats.items.length === 0 ? <p className="text-center text-slate-400 text-xs py-10 italic">無紀錄</p> : 
+                {stats.items.length === 0 ? <p className="text-center text-slate-400 text-xs py-10 italic mx-auto">無紀錄</p> : 
                   stats.items.map(p => (
                     <div key={p.name} className="space-y-1.5 bg-slate-50/50 p-3 rounded-2xl border border-transparent hover:border-[#8B9D83]/20 transition shadow-sm mb-2 text-left">
                       <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setExpandedSymbol(expandedSymbol === p.name ? null : p.name)}>
@@ -281,9 +284,9 @@ export default function App() {
                         <div className="h-full bg-[#8B9D83] transition-all duration-1000 shadow-[0_0_10px_rgba(139,157,131,0.2)]" style={{ width: `${Math.min((p.div/Math.max(p.cost, 1))*100, 100)}%` }}></div>
                       </div>
                       {expandedSymbol === p.name && (
-                        <div className="mt-2 space-y-1.5 pt-1.5 border-t border-slate-200 animate-in slide-in-from-top-2">
+                        <div className="mt-2 space-y-1.5 pt-1.5 border-t border-slate-200 animate-in slide-in-from-top-2 text-slate-900">
                           {p.lots.map(lot => (
-                            <div key={lot.id} className="flex justify-between text-[10px] font-black text-slate-600">
+                            <div key={lot.id} className="flex justify-between text-[10px] font-black">
                               <span><Clock size={10} className="inline mr-1 opacity-50"/>{lot.date}</span>
                               <span>成本 $ {lot.cost.toLocaleString()} ({Math.round(lot.progress)}% 回本)</span>
                             </div>
@@ -312,9 +315,9 @@ export default function App() {
           </div>
         )}
 
-        {/* 投入紀錄 - 修正欄位重疊與比例 */}
+        {/* 投入紀錄 - 加入代碼選擇器 */}
         {activeTab === 'invest' && (
-          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300 text-slate-900">
             {!isReady ? ( <SetupGuide onGo={() => setActiveTab('masters')} /> ) : (
               <>
                 <div className="flex justify-between items-center px-2">
@@ -328,11 +331,11 @@ export default function App() {
                     return (
                       <div key={s.name} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100 h-fit transition-all hover:shadow-md text-left">
                         <div className="p-3 bg-[#8B9D83]/5 border-b border-slate-50 flex justify-between items-center cursor-pointer hover:bg-[#8B9D83]/10" onClick={() => setInvestExpanded(investExpanded === s.name ? null : s.name)}>
-                          <span className="text-sm font-black text-slate-700 uppercase tracking-tight">{s.name} <span className="text-[10px] opacity-40">({txList.length})</span></span>
+                          <span className="text-sm font-black text-slate-700 uppercase tracking-tight">{s.name} <span className="text-[10px] opacity-40">({txList.length} 筆)</span></span>
                           <div className="text-slate-400">{investExpanded === s.name ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
                         </div>
                         {investExpanded === s.name && (
-                          <div className="p-2.5 space-y-3 animate-in slide-in-from-top-2">
+                          <div className="p-2.5 space-y-3 animate-in slide-in-from-top-2 text-slate-900">
                             {txList.sort((a,b) => b.date.localeCompare(a.date)).map(t => {
                               const draft = editTx[t.id] || t;
                               const hasChanged = JSON.stringify(draft) !== JSON.stringify(t);
@@ -342,21 +345,26 @@ export default function App() {
                                     <input type="date" value={draft.date} onChange={(e) => setEditTx({...editTx, [t.id]: {...draft, date: e.target.value}})} className="text-[10px] md:text-xs font-black outline-none bg-transparent text-slate-700 cursor-pointer" />
                                     <div className="flex items-center gap-1.5">
                                       {hasChanged && ( 
-                                        <button onClick={() => handleUpdate('transactions', t.id, draft)} className="bg-emerald-600 text-white px-2 py-0.5 rounded-lg shadow-md hover:scale-105 active:scale-95 flex items-center gap-1 animate-pulse">
+                                        <button onClick={() => handleUpdate('transactions', t.id, draft)} className="bg-emerald-600 text-white px-2 py-0.5 rounded-lg shadow-md hover:scale-105 active:scale-95 flex items-center gap-1 animate-pulse border border-emerald-500/30">
                                           <Check size={16}/> <span className="text-[9px] font-black">儲存</span>
                                         </button> 
                                       )}
                                       <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'transactions', t.id))} className="text-slate-400 hover:text-red-500 p-0.5 transition-all"><Trash2 size={16}/></button>
                                     </div>
                                   </div>
-                                  <div className="flex gap-1.5 items-center">
-                                    <select value={draft.member} onChange={(e) => setEditTx({...editTx, [t.id]: {...draft, member: e.target.value}})} className="w-18 md:w-22 bg-white text-[10px] md:text-xs p-0.5 rounded-lg font-black text-slate-800 border border-slate-200 outline-none">
-                                      {members.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
-                                    </select>
-                                    <div className="flex flex-1 gap-1.5">
-                                      {/* 💡 縮減股數欄位 (w-12)，騰出空間給成本 */}
-                                      <SmartInput type="number" value={draft.shares} onChange={v => setEditTx({...editTx, [t.id]: {...draft, shares: v}})} className="w-12 md:w-16 text-center" placeholder="股數" />
-                                      <SmartInput type="number" value={draft.cost} onChange={v => setEditTx({...editTx, [t.id]: {...draft, cost: v}})} className="flex-1 text-center text-[#8B9D83]" placeholder="成本" />
+                                  <div className="flex flex-wrap gap-1.5 items-center">
+                                    <div className="flex flex-1 gap-1">
+                                      <select value={draft.member} onChange={(e) => setEditTx({...editTx, [t.id]: {...draft, member: e.target.value}})} className="flex-1 bg-white text-[9px] md:text-[10px] p-0.5 rounded-lg font-black text-slate-800 border border-slate-200 outline-none">
+                                        {members.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                                      </select>
+                                      {/* 💡 新增標的選擇器 */}
+                                      <select value={draft.symbol} onChange={(e) => setEditTx({...editTx, [t.id]: {...draft, symbol: e.target.value}})} className="flex-1 bg-white text-[9px] md:text-[10px] p-0.5 rounded-lg font-black text-slate-800 border border-slate-200 outline-none">
+                                        {symbols.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                      </select>
+                                    </div>
+                                    <div className="flex-1 flex gap-1">
+                                      <SmartInput type="number" value={draft.shares} onChange={v => setEditTx({...editTx, [t.id]: {...draft, shares: v}})} className="w-12 md:w-14 text-center shadow-inner" placeholder="股數" />
+                                      <SmartInput type="number" value={draft.cost} onChange={v => setEditTx({...editTx, [t.id]: {...draft, cost: v}})} className="flex-1 text-center text-[#8B9D83] shadow-inner" placeholder="成本" />
                                     </div>
                                   </div>
                                 </div>
@@ -373,9 +381,9 @@ export default function App() {
           </div>
         )}
 
-        {/* 領息紀錄 - 修正溢出 */}
+        {/* 領息紀錄 */}
         {activeTab === 'dividends' && (
-          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300 text-left">
+          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300 text-left text-slate-900">
             {!isReady ? ( <SetupGuide onGo={() => setActiveTab('masters')} /> ) : (
               <>
                 <div className="flex justify-between items-center px-2 text-slate-800">
@@ -387,7 +395,7 @@ export default function App() {
                     const draft = editDiv[d.id] || d;
                     const hasChanged = JSON.stringify(draft) !== JSON.stringify(d);
                     return (
-                      <div key={d.id} className={`p-3 rounded-2xl shadow-sm flex items-center gap-4 border-2 transition-all relative ${hasChanged ? 'border-amber-300 bg-amber-50/20 shadow-md scale-[1.02]' : 'border-slate-50 bg-white hover:border-slate-200'}`}>
+                      <div key={d.id} className={`p-3 rounded-3xl shadow-sm flex items-center gap-4 border-2 transition-all relative ${hasChanged ? 'border-amber-300 bg-amber-50/20 shadow-md scale-[1.02]' : 'border-slate-50 bg-white hover:border-slate-200'}`}>
                         <div className="flex-1 space-y-1 text-left min-w-0">
                           <input type="date" value={draft.date} onChange={(e) => setEditDiv({...editDiv, [d.id]: {...draft, date: e.target.value}})} className="text-[9px] md:text-xs font-black outline-none italic bg-transparent text-slate-500" />
                           <div className="flex gap-2 items-center truncate text-slate-800">
@@ -399,7 +407,7 @@ export default function App() {
                             </select>
                           </div>
                         </div>
-                        <div className="bg-[#F2E8D5]/60 px-2 py-1 rounded-2xl flex items-center gap-1 font-mono shadow-inner border border-[#8B9D83]/10 min-w-[70px]">
+                        <div className="bg-[#F2E8D5]/60 px-2 py-1 rounded-xl flex items-center gap-1 font-mono shadow-inner border border-[#8B9D83]/10 min-w-[70px]">
                             <span className="text-[9px] text-[#8B9D83] font-black">NT$</span>
                             <SmartInput type="number" value={draft.amount} onChange={v => setEditDiv({...editDiv, [d.id]: {...draft, amount: v}})} className="bg-transparent text-right font-black text-[#8B9D83] w-12 md:w-14 outline-none text-xs border-none focus:ring-0 p-0" />
                         </div>
@@ -425,12 +433,16 @@ export default function App() {
           <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-300 text-slate-900 pb-16 text-left">
             <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-sm space-y-10 border border-slate-50 text-left">
                <div className="space-y-4">
-                 <h3 className="font-black text-xs md:text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2 justify-center md:justify-start"><Users size={16}/> 人員管理中心</h3>
+                 <h3 className="font-black text-xs md:text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2 justify-center md:justify-start text-left mx-auto md:mx-0"><Users size={16}/> 人員管理中心</h3>
                  <div className="flex gap-2 max-w-sm">
-                   <SmartInput id="memIn" placeholder="人員名稱" className="flex-1 shadow-inner py-2.5 px-4 text-slate-800" onChange={() => {}} />
+                   <SmartInput 
+                     placeholder="人員名稱" 
+                     className="flex-1 shadow-inner py-2.5 px-4 text-slate-800" 
+                     value={newMemberName}
+                     onChange={v => setNewMemberName(v)}
+                   />
                    <button onClick={async () => {
-                     const el = document.getElementById('memIn'); const val = el.value.trim();
-                     if(val) { await safeAddDoc('members', { name: val }); el.value = ''; }
+                     if(newMemberName.trim()) { await safeAddDoc('members', { name: newMemberName.trim() }); setNewMemberName(""); }
                    }} className="bg-blue-600 text-white px-8 py-2.5 rounded-xl font-black text-sm shadow-md active:scale-95 transition-all hover:bg-blue-700">建立</button>
                  </div>
                  <div className="flex flex-wrap gap-3">
@@ -444,15 +456,19 @@ export default function App() {
                </div>
 
                <div className="border-t border-slate-50 pt-10 space-y-4 text-left">
-                 <h3 className="font-black text-xs md:text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2 justify-center md:justify-start"><Globe size={16}/> 股票代碼與市價設定</h3>
+                 <h3 className="font-black text-xs md:text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2 justify-center md:justify-start text-left mx-auto md:mx-0"><Globe size={16}/> 股票代碼與市價設定</h3>
                  <div className="flex gap-2 max-w-sm text-left">
-                   <SmartInput id="symbolIn" placeholder="例如: 0050" className="flex-1 uppercase shadow-inner py-2.5 px-4 text-slate-800" onChange={() => {}} />
+                   <SmartInput 
+                     placeholder="例如: 0050" 
+                     className="flex-1 uppercase shadow-inner py-2.5 px-4 text-slate-800" 
+                     value={newSymbolName}
+                     onChange={v => setNewSymbolName(v.toUpperCase())}
+                   />
                    <button onClick={async () => {
-                     const el = document.getElementById('symbolIn'); const val = el.value.toUpperCase().trim();
-                     if(val) { await safeAddDoc('symbols', { name: val, currentPrice: 0 }); el.value = ''; }
+                     if(newSymbolName.trim()) { await safeAddDoc('symbols', { name: newSymbolName.trim(), currentPrice: 0 }); setNewSymbolName(""); }
                    }} className="bg-[#8B9D83] text-white px-8 py-2.5 rounded-xl font-black text-sm shadow-md active:scale-95 hover:bg-[#7A8C72] transition-all">新增</button>
                  </div>
-                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6">
+                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6 text-slate-800">
                    {symbols.map(s => {
                      const draft = editSym[s.id] || s; const hasChanged = Number(draft.currentPrice) !== Number(s.currentPrice);
                      return (
@@ -469,7 +485,7 @@ export default function App() {
                             </div>
                          </div>
                          <div className="flex items-center gap-1.5 pt-1">
-                           <span className="text-[7px] text-slate-400 font-black uppercase">市價</span>
+                           <span className="text-[7px] text-slate-400 font-black uppercase whitespace-nowrap">市價</span>
                            <SmartInput type="number" value={draft.currentPrice} onChange={v => setEditSym({...editSym, [s.id]: {...draft, currentPrice: v}})} className="w-full bg-slate-50 border-none shadow-none focus:ring-0 px-0 text-center font-mono text-[#8B9D83]" placeholder="0" />
                          </div>
                        </div>
@@ -497,11 +513,10 @@ export default function App() {
         )}
       </main>
 
-      {/* 底部導覽 - 極度扁平 RWD 版 (解決紅框太高的問題) */}
+      {/* 底部導覽 - 極度扁平 RWD 版 */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none md:pb-6 md:px-12 lg:px-24">
         <div className="max-w-7xl mx-auto w-full flex justify-center md:justify-end pointer-events-auto">
-          {/* 高度再度壓縮：h-12 (手機) 到 h-14 (電腦) */}
-          <div className="bg-white/90 backdrop-blur-md border border-slate-200 px-4 md:px-10 py-1 shadow-[0_-8px_40px_rgba(0,0,0,0.1)] flex justify-around items-center h-12 md:h-14 w-full md:w-fit md:rounded-full md:gap-10 animate-in slide-in-from-bottom-10 duration-700">
+          <div className="bg-white/90 backdrop-blur-md border border-slate-200 px-4 md:px-10 py-1 shadow-[0_-8px_40px_rgba(0,0,0,0.1)] flex justify-around items-center h-12 md:h-14 w-full md:w-fit md:rounded-full md:gap-10 animate-in slide-in-from-bottom-10 duration-700 text-slate-900">
             <NavBtn active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<Activity size={24}/>} label="監測" />
             <NavBtn active={activeTab === 'dividends'} onClick={() => setActiveTab('dividends')} icon={<DollarSign size={24}/>} label="領息" />
             <NavBtn active={activeTab === 'invest'} onClick={() => setActiveTab('invest')} icon={<TrendingUp size={24}/>} label="投入" />
