@@ -1,2 +1,0 @@
-# Dividend
-Created with CodeSandbox
