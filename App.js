@@ -13,16 +13,16 @@ import {
   DollarSign, List, Layers, LogOut, ShieldCheck, 
   BarChart3, Calendar, Users, AlertCircle, 
   ChevronRight, ChevronDown, ChevronUp, Clock, ArrowRight, Check,
-  Globe, BarChart, ExternalLink, Copy, Heart
+  Globe, BarChart, ExternalLink, Copy, Heart, Save
 } from 'lucide-react';
 
 /**
- * nayo money 股利工具 v11.4 - 穩健存檔旗艦版
+ * nayo money 股利工具 v11.5 - 儲存按鈕強化版
  * 更新重點：
- * 1. 強制手動存檔：投入與領息的所有變動必須點擊「打勾」按鈕才存入雲端。
- * 2. 編輯緩衝優化：修正了即時同步導致輸入法跳動的問題。
- * 3. 品牌視覺：分頁標題與 Favicon 持續運作。
- * 4. 廣告區塊：管理分頁底部新增官網推薦。
+ * 1. 儲存按鈕顯性化：將 Check 圖示放大至 18，並增加陰影與點擊範圍。
+ * 2. 編輯提示：強化 hasChanged 狀態下的視覺引導，讓使用者知道必須點擊儲存。
+ * 3. 極致壓縮：維持高度扁平化 UI。
+ * 4. 品牌視覺：分頁標題與 Favicon 持續運作。
  */
 
 // --- 0. 樣式修復 ---
@@ -83,7 +83,7 @@ export default function App() {
   const [transactions, setTransactions] = useState([]); 
   const [filterMember, setFilterMember] = useState('all');
 
-  // 本地編輯暫存區 (僅在手動點擊儲存時清除)
+  // 本地編輯暫存區
   const [editTx, setEditTx] = useState({});
   const [editDiv, setEditDiv] = useState({});
   const [editSym, setEditSym] = useState({});
@@ -150,7 +150,6 @@ export default function App() {
     return () => { unsub1(); unsub2(); unsub3(); unsub4(); };
   }, [user]);
 
-  // 5. 統計引擎 (基於資料庫確定後的數值)
   const stats = useMemo(() => {
     const fDivs = dividends.filter(d => filterMember === 'all' || d.member === filterMember);
     const fTx = transactions.filter(t => filterMember === 'all' || t.member === filterMember);
@@ -208,7 +207,6 @@ export default function App() {
     if (!user) return;
     try {
       await updateDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, col, id), data);
-      // 清除該筆資料的編輯暫存
       if (col === 'transactions') {
         const next = { ...editTx }; delete next[id]; setEditTx(next);
       } else if (col === 'dividends') {
@@ -228,12 +226,12 @@ export default function App() {
 
   if (!user) return (
     <div className="min-h-screen bg-[#F2E8D5] flex items-center justify-center p-6 text-center">
-      <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl border border-[#D9C5B2]/20">
+      <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl border border-[#D9C5B2]/20 text-center mx-auto">
         <div className="bg-[#8B9D83] p-5 rounded-2xl text-white shadow-xl mb-6 mx-auto w-16 h-16 flex items-center justify-center">
           <ShieldCheck size={36} />
         </div>
         <h1 className="text-xl font-black text-[#4A4A4A]">nayo money</h1>
-        <p className="text-[#8B9D83] text-[10px] mt-1 font-bold italic mb-8">理財指揮官 v11.4</p>
+        <p className="text-[#8B9D83] text-[10px] mt-1 font-bold italic mb-8">理財指揮官 v11.5</p>
         <button onClick={handleGoogleLogin} className="w-full bg-white border border-slate-200 py-3.5 rounded-xl flex items-center justify-center gap-3 font-black text-slate-700 hover:bg-slate-50 transition-all shadow-md">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G" className="w-5 h-5" />
           Google 帳號登入
@@ -274,7 +272,7 @@ export default function App() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <div className="bg-white rounded-xl p-3 shadow-sm space-y-2 border border-slate-50">
                 <h3 className="font-black text-slate-800 text-[10px] tracking-widest uppercase border-b pb-1 flex items-center gap-2 justify-center md:justify-start"><Globe size={12}/> 標的回本監測盤</h3>
-                {stats.items.length === 0 ? <p className="text-center text-slate-400 text-[9px] py-4 italic">無資料</p> : 
+                {stats.items.length === 0 ? <p className="text-center text-slate-400 text-[9px] py-4 italic mx-auto">無資料</p> : 
                   stats.items.map(p => (
                     <div key={p.name} className="space-y-1 bg-slate-50/50 p-2 rounded-lg border border-transparent hover:border-[#8B9D83]/20 transition shadow-sm mb-1.5">
                       <div className="flex justify-between items-center cursor-pointer" onClick={() => setExpandedSymbol(expandedSymbol === p.name ? null : p.name)}>
@@ -322,13 +320,13 @@ export default function App() {
           </div>
         )}
 
-        {/* 投入紀錄 - 強制手動儲存 */}
+        {/* 投入紀錄 */}
         {activeTab === 'invest' && (
           <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
             {!isReady ? ( <SetupGuide onGo={() => setActiveTab('masters')} /> ) : (
               <>
                 <div className="flex justify-between items-center px-2">
-                    <h2 className="font-black text-sm text-slate-800 flex items-center gap-2 italic"><TrendingUp size={16}/> 投入明細 (點擊儲存)</h2>
+                    <h2 className="font-black text-sm text-slate-800 flex items-center gap-2 italic"><TrendingUp size={16}/> 投入明細</h2>
                     <button onClick={() => safeAddDoc('transactions', { member: members[0]?.name || '本人', symbol: symbols[0]?.name || '0050', cost: 0, shares: 0, date: new Date().toISOString().split('T')[0] })} className="bg-[#8B9D83] text-white p-1.5 rounded-lg shadow-md active:scale-95 transition-all"><PlusCircle size={16}/></button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -347,20 +345,27 @@ export default function App() {
                               const draft = editTx[t.id] || t;
                               const hasChanged = JSON.stringify(draft) !== JSON.stringify(t);
                               return (
-                                <div key={t.id} className={`p-2 rounded-lg border transition-all space-y-1.5 relative ${hasChanged ? 'border-amber-300 bg-amber-50/20 shadow-sm' : 'border-slate-50 bg-slate-50/30'}`}>
+                                <div key={t.id} className={`p-2 rounded-lg border transition-all space-y-1.5 relative ${hasChanged ? 'border-amber-400 bg-amber-50/20 shadow-sm' : 'border-slate-50 bg-slate-50/30'}`}>
                                   <div className="flex justify-between items-center">
                                     <input type="date" value={draft.date} onChange={(e) => setEditTx({...editTx, [t.id]: {...draft, date: e.target.value}})} className="text-[9px] font-black outline-none italic bg-transparent text-slate-600 cursor-pointer" />
                                     <div className="flex items-center gap-2">
-                                      {hasChanged && ( <button onClick={() => handleUpdate('transactions', t.id, draft)} className="bg-emerald-500 text-white p-1 rounded shadow-md hover:scale-110 transition-all"><Check size={10}/></button> )}
+                                      {hasChanged && ( 
+                                        <button 
+                                          onClick={() => handleUpdate('transactions', t.id, draft)} 
+                                          className="bg-emerald-500 text-white p-1 rounded-md shadow-lg shadow-emerald-500/20 hover:scale-110 transition-all flex items-center gap-1 animate-pulse"
+                                        >
+                                          <Check size={18}/> <span className="text-[9px] font-black mr-1">儲存</span>
+                                        </button> 
+                                      )}
                                       <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'transactions', t.id))} className="text-slate-400 hover:text-red-500 p-0.5"><Trash2 size={12}/></button>
                                     </div>
                                   </div>
                                   <div className="flex gap-2">
-                                    <select value={draft.member} onChange={(e) => setEditTx({...editTx, [t.id]: {...draft, member: e.target.value}})} className="flex-1 bg-white text-[9px] p-1 rounded font-black text-slate-700 border border-slate-100 outline-none">
+                                    <select value={draft.member} onChange={(e) => setEditTx({...editTx, [t.id]: {...draft, member: e.target.value}})} className="flex-1 bg-white text-[9px] p-1 rounded font-black text-slate-700 border border-slate-100 outline-none shadow-sm">
                                       {members.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                                     </select>
-                                    <input type="number" value={draft.shares} onChange={e => setEditTx({...editTx, [t.id]: {...draft, shares: Number(e.target.value)}})} className="w-14 bg-white border border-slate-100 rounded p-1 text-[9px] font-bold text-center text-slate-800" placeholder="股數" />
-                                    <input type="number" value={draft.cost} onChange={e => setEditTx({...editTx, [t.id]: {...draft, cost: Number(e.target.value)}})} className="w-16 bg-white border border-slate-100 rounded p-1 text-[9px] font-bold text-center text-[#8B9D83]" placeholder="成本" />
+                                    <input type="number" value={draft.shares} onChange={e => setEditTx({...editTx, [t.id]: {...draft, shares: Number(e.target.value)}})} className="w-14 bg-white border border-slate-100 rounded p-1 text-[9px] font-bold text-center text-slate-800 shadow-inner" placeholder="股數" />
+                                    <input type="number" value={draft.cost} onChange={e => setEditTx({...editTx, [t.id]: {...draft, cost: Number(e.target.value)}})} className="w-16 bg-white border border-slate-100 rounded p-1 text-[9px] font-bold text-center text-[#8B9D83] shadow-inner" placeholder="成本" />
                                   </div>
                                 </div>
                               );
@@ -376,13 +381,13 @@ export default function App() {
           </div>
         )}
 
-        {/* 領息紀錄 - 強制手動儲存 */}
+        {/* 領息紀錄 */}
         {activeTab === 'dividends' && (
           <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
             {!isReady ? ( <SetupGuide onGo={() => setActiveTab('masters')} /> ) : (
               <>
                 <div className="flex justify-between items-center px-2">
-                    <h2 className="font-black text-sm text-slate-800 flex items-center gap-2 italic"><DollarSign size={16}/> 領息流水 (點擊儲存)</h2>
+                    <h2 className="font-black text-sm text-slate-800 flex items-center gap-2 italic"><DollarSign size={16}/> 領息流水</h2>
                     <button onClick={() => safeAddDoc('dividends', { member: members[0]?.name || '本人', symbol: symbols[0]?.name || '0050', amount: 0, date: new Date().toISOString().split('T')[0] })} className="bg-[#8B9D83] text-white p-1.5 rounded-lg shadow-md active:rotate-90 transition-all"><PlusCircle size={16}/></button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-800">
@@ -393,11 +398,11 @@ export default function App() {
                       <div key={d.id} className={`p-2 rounded-xl shadow-sm flex items-center gap-3 border transition-all relative ${hasChanged ? 'border-amber-300 bg-amber-50/20 shadow-sm' : 'border-slate-50 bg-white hover:border-[#8B9D83]/20'}`}>
                         <div className="flex-1 space-y-0 text-left">
                           <input type="date" value={draft.date} onChange={(e) => setEditDiv({...editDiv, [d.id]: {...draft, date: e.target.value}})} className="text-[8px] font-black outline-none italic bg-transparent text-slate-500 cursor-pointer" />
-                          <div className="flex gap-2 items-center">
-                            <select value={draft.member} onChange={(e) => setEditDiv({...editDiv, [d.id]: {...draft, member: e.target.value}})} className="bg-[#F2E8D5]/60 text-[8px] p-1 rounded font-black text-slate-700 border-none outline-none">
+                          <div className="flex gap-2 items-center text-slate-800">
+                            <select value={draft.member} onChange={(e) => setEditDiv({...editDiv, [d.id]: {...draft, member: e.target.value}})} className="bg-[#F2E8D5]/60 text-[8px] p-1 rounded font-black text-slate-700 border-none outline-none shadow-sm">
                               {members.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                             </select>
-                            <select value={draft.symbol} onChange={(e) => setEditDiv({...editDiv, [d.id]: {...draft, symbol: e.target.value}})} className="font-black text-slate-800 text-[10px] bg-transparent border-none outline-none">
+                            <select value={draft.symbol} onChange={(e) => setEditDiv({...editDiv, [d.id]: {...draft, symbol: e.target.value}})} className="font-black text-slate-800 text-[10px] bg-transparent border-none outline-none shadow-sm">
                               {symbols.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                             </select>
                           </div>
@@ -407,7 +412,14 @@ export default function App() {
                             <input type="number" value={draft.amount} onChange={e => setEditDiv({...editDiv, [d.id]: {...draft, amount: Number(e.target.value)}})} className="bg-transparent text-right font-black text-[#8B9D83] w-16 outline-none text-xs font-bold" />
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
-                          {hasChanged && ( <button onClick={() => handleUpdate('dividends', d.id, draft)} className="bg-emerald-500 text-white p-0.5 rounded shadow-md hover:scale-110 transition-all"><Check size={10}/></button> )}
+                          {hasChanged && ( 
+                            <button 
+                              onClick={() => handleUpdate('dividends', d.id, draft)} 
+                              className="bg-emerald-500 text-white p-1 rounded-md shadow-lg shadow-emerald-500/20 hover:scale-110 transition-all flex items-center gap-1 animate-pulse"
+                            >
+                              <Check size={18}/> <span className="text-[9px] font-black mr-1">儲存</span>
+                            </button> 
+                          )}
                           <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'dividends', d.id))} className="text-slate-400 hover:text-red-500 p-0.5 transition-all"><Trash2 size={12}/></button>
                         </div>
                       </div>
@@ -434,7 +446,7 @@ export default function App() {
                  </div>
                  <div className="flex flex-wrap gap-1.5 justify-center md:justify-start">
                    {members.map(m => (
-                     <span key={m.id} className="bg-blue-50 text-[9px] font-black text-blue-800 px-2 py-1 rounded border border-blue-100 flex items-center gap-2 group">
+                     <span key={m.id} className="bg-blue-50 text-[9px] font-black text-blue-800 px-2 py-1 rounded border border-blue-100 flex items-center gap-2 group shadow-sm">
                        {m.name}
                        <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'members', m.id))} className="text-blue-300 hover:text-red-500">×</button>
                      </span>
@@ -443,7 +455,7 @@ export default function App() {
                </div>
 
                <div className="border-t border-slate-50 pt-3 space-y-2 text-center md:text-left">
-                 <h3 className="font-black text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-2 justify-center md:justify-start"><Globe size={12}/> 股票與現價 (點擊儲存)</h3>
+                 <h3 className="font-black text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-2 justify-center md:justify-start"><Globe size={12}/> 股票與現價</h3>
                  <div className="flex gap-2">
                    <CompactInput id="symbolIn" placeholder="例如: 0050" className="flex-1 uppercase" onChange={() => {}} />
                    <button onClick={async () => {
@@ -459,13 +471,20 @@ export default function App() {
                          <div className="flex justify-between items-center mb-1">
                             <span className="text-[9px] font-black text-slate-800 uppercase">{s.name}</span>
                             <div className="flex items-center gap-1">
-                               {hasChanged && ( <button onClick={() => handleUpdate('symbols', s.id, draft)} className="bg-emerald-500 text-white p-0.5 rounded shadow-sm hover:scale-110"><Check size={8}/></button> )}
+                               {hasChanged && ( 
+                                 <button 
+                                   onClick={() => handleUpdate('symbols', s.id, draft)} 
+                                   className="bg-emerald-500 text-white p-0.5 rounded shadow-lg hover:scale-110 transition-all flex items-center animate-pulse"
+                                 >
+                                   <Check size={14}/>
+                                 </button> 
+                               )}
                                <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'symbols', s.id))} className="text-slate-300 hover:text-red-500 transition-all"><Trash2 size={8}/></button>
                             </div>
                          </div>
                          <div className="flex items-center gap-1.5">
                            <span className="text-[7px] text-slate-400 font-black uppercase">市價</span>
-                           <input type="number" value={draft.currentPrice} onChange={e => setEditSym({...editSym, [s.id]: {...draft, currentPrice: Number(e.target.value)}})} className="w-full bg-slate-50 border border-slate-50 rounded p-1 text-center font-mono text-[#8B9D83] font-bold outline-none text-[9px]" placeholder="0" />
+                           <input type="number" value={draft.currentPrice} onChange={e => setEditSym({...editSym, [s.id]: {...draft, currentPrice: Number(e.target.value)}})} className="w-full bg-slate-50 border border-slate-50 rounded p-1 text-center font-mono text-[#8B9D83] font-bold outline-none text-[9px] shadow-inner" placeholder="0" />
                          </div>
                        </div>
                      );
@@ -512,10 +531,12 @@ export default function App() {
 
 // --- 子組件 ---
 const SetupGuide = ({ onGo }) => (
-  <div className="bg-white p-8 rounded-2xl text-center space-y-4 shadow-xl border border-amber-50 animate-in zoom-in max-w-lg mx-auto mt-4 text-slate-800">
+  <div className="bg-white p-8 rounded-2xl text-center space-y-4 shadow-xl border border-amber-50 animate-in zoom-in max-w-lg mx-auto mt-4 text-slate-800 text-center">
     <div className="bg-amber-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto text-amber-500 shadow-inner"><AlertCircle size={32} /></div>
-    <h3 className="text-lg font-black tracking-tight text-center">尚未完成設定</h3>
-    <p className="text-xs text-slate-500 font-bold px-4 leading-relaxed text-center">請前往「管理」分頁建立人員與標的。</p>
+    <div className="space-y-1 text-center">
+      <h3 className="text-lg font-black tracking-tight text-center">尚未完成設定</h3>
+      <p className="text-xs text-slate-500 font-bold px-4 leading-relaxed text-center">請先前往「管理」分頁建立人員與標的。</p>
+    </div>
     <button onClick={onGo} className="bg-blue-600 text-white w-full max-w-xs py-3 rounded-xl font-black text-sm shadow-lg active:scale-95 transition-all mx-auto tracking-widest uppercase">立即前往 <ArrowRight size={14}/></button>
   </div>
 );
@@ -528,7 +549,7 @@ const NavBtn = ({ active, onClick, icon, label }) => (
 );
 
 const StatCard = ({ title, value, sub, color }) => (
-  <div className="bg-white p-2 md:p-3 rounded-xl shadow-sm border border-slate-50 active:scale-95 transition-transform text-center relative overflow-hidden group">
+  <div className="bg-white p-2.5 md:p-3 rounded-xl shadow-sm border border-slate-50 active:scale-95 transition-transform text-center relative overflow-hidden group">
     <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: color, opacity: 0.3 }}></div>
     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{title}</p>
     <p className={`text-base md:text-lg font-mono font-black tracking-tighter text-slate-800`} style={{ color }}>{value}</p>
