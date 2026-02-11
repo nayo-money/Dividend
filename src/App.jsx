@@ -17,28 +17,37 @@ import {
 } from 'lucide-react';
 
 /**
- * nayo money 股利工具 v30.1 - 功能更新版
- * 1. 簡化領息輸入：移除分組內的重複輸入框。
- * 2. 監測盤增加總股數顯示。
- * 3. 投入分組標題增加總股數與總成本顯示。
+ * nayo money 股利工具 v30.1 - 穩定修復版
+ * 1. 修正空白畫面：加強 Firebase 配置解析安全性。
+ * 2. 簡化領息輸入：移除標的分組內的重複輸入框，改為全域統一輸入。
+ * 3. 強化資訊顯示：
+ * - 監測盤標題顯示總股數。
+ * - 投入分組標題顯示總股數與總成本。
  */
 
-// --- 1. Firebase 初始化 ---
-const firebaseConfig = typeof __firebase_config !== 'undefined' 
-  ? JSON.parse(__firebase_config) 
-  : {
-      apiKey: "", 
-      authDomain: "dividend-progress-bar-350dd.firebaseapp.com",
-      projectId: "dividend-progress-bar-350dd",
-      storageBucket: "dividend-progress-bar-350dd.firebasestorage.app",
-      messagingSenderId: "250314546689",
-      appId: "1:250314546689:web:13111c1368547594e16a00"
-    };
+// --- 1. Firebase 初始化 (加入錯誤保護) ---
+let firebaseConfig = {
+  apiKey: "", 
+  authDomain: "dividend-progress-bar-350dd.firebaseapp.com",
+  projectId: "dividend-progress-bar-350dd",
+  storageBucket: "dividend-progress-bar-350dd.firebasestorage.app",
+  messagingSenderId: "250314546689",
+  appId: "1:250314546689:web:13111c1368547594e16a00"
+};
+
+try {
+  if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+    const config = JSON.parse(__firebase_config);
+    firebaseConfig = { ...firebaseConfig, ...config };
+  }
+} catch (e) {
+  console.error("Firebase config parsing error", e);
+}
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'nayo-money-official';
+const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'nayo-money-official';
 
 // --- 2. 智慧型精簡輸入組件 ---
 const CompactNumberInput = ({ value, onChange, className, placeholder, ...props }) => {
@@ -103,15 +112,21 @@ export default function App() {
         } else {
           await signInAnonymously(auth);
         }
-      } catch (err) {}
+      } catch (err) {
+        console.error("Auth failed", err);
+        setLoading(false);
+      }
     };
     initAuth();
-    return onAuthStateChanged(auth, (u) => { setUser(u); setLoading(false); });
+    return onAuthStateChanged(auth, (u) => { 
+      setUser(u); 
+      setLoading(false); 
+    });
   }, []);
 
   useEffect(() => {
     if (!user) return;
-    const getPath = (col) => collection(db, 'artifacts', appId, 'users', user.uid, col);
+    const getPath = (col) => collection(db, 'artifacts', currentAppId, 'users', user.uid, col);
 
     const unsubMembers = onSnapshot(getPath('members'), s => {
       const data = s.docs.map(d => ({id: d.id, ...d.data()}));
@@ -120,7 +135,7 @@ export default function App() {
         if (!txDraft.member) setTxDraft(p => ({ ...p, member: data[0].name }));
         if (!divDraft.member) setDivDraft(p => ({ ...p, member: data[0].name }));
       }
-    });
+    }, (err) => setError("成員載入失敗"));
 
     const unsubSymbols = onSnapshot(getPath('symbols'), s => {
       const data = s.docs.map(d => ({id: d.id, ...d.data()}));
@@ -129,10 +144,22 @@ export default function App() {
         if (!txDraft.symbol) setTxDraft(p => ({ ...p, symbol: data[0].name }));
         if (!divDraft.symbol) setDivDraft(p => ({ ...p, symbol: data[0].name }));
       }
-    });
+    }, (err) => setError("標的載入失敗"));
 
-    onSnapshot(getPath('dividends'), s => setDividends(s.docs.map(d => ({id: d.id, ...d.data()}))));
-    onSnapshot(getPath('transactions'), s => setTransactions(s.docs.map(d => ({id: d.id, ...d.data()}))));
+    const unsubDivs = onSnapshot(getPath('dividends'), s => {
+      setDividends(s.docs.map(d => ({id: d.id, ...d.data()})));
+    }, (err) => setError("股利數據同步失敗"));
+
+    const unsubTxs = onSnapshot(getPath('transactions'), s => {
+      setTransactions(s.docs.map(d => ({id: d.id, ...d.data()})));
+    }, (err) => setError("投入數據同步失敗"));
+
+    return () => {
+      unsubMembers();
+      unsubSymbols();
+      unsubDivs();
+      unsubTxs();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -141,6 +168,7 @@ export default function App() {
     const symObj = {}; symbols.forEach(s => symObj[s.id] = { ...s, currentPrice: s.currentPrice || 0 }); setEditSym(symObj);
   }, [transactions, dividends, symbols]);
 
+  // --- 核心數據運算 ---
   const stats = useMemo(() => {
     const fDivs = dividends.filter(d => filterMember === 'all' || d.member === filterMember);
     const fTx = transactions.filter(t => filterMember === 'all' || t.member === filterMember);
@@ -212,16 +240,16 @@ export default function App() {
 
   const handleUpdate = async (col, id, data) => {
     if (!user) return;
-    try { await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, col, id), data); } catch (e) {}
+    try { await updateDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, col, id), data); } catch (e) { setError("更新失敗"); }
   };
 
   const safeAddDoc = async (colName, data) => {
     if (!user) return;
     try { 
-      await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, colName), { ...data, createdAt: serverTimestamp() }); 
+      await addDoc(collection(db, 'artifacts', currentAppId, 'users', user.uid, colName), { ...data, createdAt: serverTimestamp() }); 
       if (colName === 'transactions') { setInvestExpanded(data.symbol); setTxDraft({ ...txDraft, cost: '0', shares: '0' }); }
       if (colName === 'dividends') { setDivExpanded(data.symbol); setDivDraft({ ...divDraft, amount: '0' }); }
-    } catch (e) {}
+    } catch (e) { setError("連線失敗"); }
   };
 
   if (loading) return (
@@ -240,7 +268,7 @@ export default function App() {
             <h1 className="text-base font-black tracking-tight leading-none uppercase">nayo money</h1>
           </div>
           <div className="flex items-center gap-2">
-            <select value={filterMember} onChange={e => setFilterMember(e.target.value)} className="bg-white/20 text-white text-xs font-black border-none outline-none rounded-lg px-2 py-1 backdrop-blur-md">
+            <select value={filterMember} onChange={e => setFilterMember(e.target.value)} className="bg-white/20 text-white text-xs font-black border-none outline-none rounded-lg px-2 py-1 backdrop-blur-md cursor-pointer">
               <option value="all" className="text-slate-900 font-bold">全家人</option>
               {members.map(m => ( <option key={m.id} value={m.name} className="text-slate-900 font-bold">{m.name}</option> ))}
             </select>
@@ -250,9 +278,16 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+        {error && (
+          <div className="bg-red-50 text-red-500 p-4 rounded-2xl flex items-center gap-3 text-sm font-bold border border-red-100 animate-pulse">
+            <AlertCircle size={20} /> {error}
+            <button onClick={() => setError(null)} className="ml-auto text-xs underline">關閉</button>
+          </div>
+        )}
+
         {activeTab === 'overview' && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <StatCard title="總投入" value={`$${Math.round(stats.totalCost).toLocaleString()}`} sub="成本本金" color="#4A4A4A" />
               <StatCard title="總市值" value={`$${Math.round(stats.totalMarketValue).toLocaleString()}`} sub="目前價值" color="#3B82F6" />
               <StatCard title="回本率" value={`${stats.recovery.toFixed(2)}%`} sub="回收比重" color="#8B9D83" />
@@ -274,7 +309,7 @@ export default function App() {
                           <div>
                             <span className="text-lg font-black uppercase text-slate-800">{p.name}</span>
                             <div className="text-[10px] font-bold text-slate-400 mt-0.5">
-                              持有: <span className="text-slate-600">{p.shares.toLocaleString()}</span> 股
+                              持有: <span className="text-slate-600 font-mono">{p.shares.toLocaleString()}</span> 股
                               <span className="ml-2 text-slate-300">
                                 {expandedSymbol === p.name ? <ChevronUp size={10} className="inline"/> : <ChevronDown size={10} className="inline"/>}
                               </span>
@@ -318,7 +353,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100">
+              <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100 h-fit">
                 <div className="flex justify-between items-end border-b-2 border-slate-50 pb-2 mb-4">
                   <h3 className="font-black text-slate-800 text-sm tracking-widest uppercase flex items-center gap-2">
                     <BarChart size={18} className="text-[#8B9D83]"/> 每月領息現金流
@@ -346,7 +381,7 @@ export default function App() {
         )}
 
         {activeTab === 'invest' && (
-          <div className="space-y-4 animate-in slide-in-from-right-4">
+          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
             {!isReady ? ( <SetupGuide onGo={() => setActiveTab('masters')} /> ) : (
               <>
                 <h2 className="font-black text-lg text-slate-800 flex items-center gap-2 italic"><TrendingUp size={20}/> 投入紀錄管理</h2>
@@ -357,17 +392,17 @@ export default function App() {
                    </div>
                    <div className="flex flex-wrap md:flex-nowrap gap-3 items-center">
                       <div className="flex flex-[2] gap-2 items-center">
-                        <select value={txDraft.member} onChange={e => setTxDraft({...txDraft, member: e.target.value})} className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 shadow-sm">
+                        <select value={txDraft.member} onChange={e => setTxDraft({...txDraft, member: e.target.value})} className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 shadow-sm text-slate-900">
                           {members.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                         </select>
-                        <select value={txDraft.symbol} onChange={e => setTxDraft({...txDraft, symbol: e.target.value})} className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 shadow-sm uppercase">
+                        <select value={txDraft.symbol} onChange={e => setTxDraft({...txDraft, symbol: e.target.value})} className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 shadow-sm uppercase text-slate-900">
                           {symbols.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                         </select>
                       </div>
                       <div className="flex flex-[3] gap-2 items-center">
                         <CompactNumberInput placeholder="碎股數" value={txDraft.shares} onChange={v => setTxDraft({...txDraft, shares: v})} className="flex-1 text-center py-2" />
                         <CompactNumberInput placeholder="成本 NT$" value={txDraft.cost} onChange={v => setTxDraft({...txDraft, cost: v})} className="flex-[2] text-center py-2" />
-                        <button onClick={() => safeAddDoc('transactions', txDraft)} className="bg-[#8B9D83] text-white p-2.5 rounded-xl shadow-lg active:scale-90 hover:bg-[#7A8C72] transition-all"><Send size={20} /></button>
+                        <button onClick={() => safeAddDoc('transactions', txDraft)} className="bg-[#8B9D83] text-white p-2.5 rounded-xl shadow-lg active:scale-90 hover:bg-[#7A8C72] transition-all flex items-center justify-center border-2 border-white/20"><Send size={20} /></button>
                       </div>
                    </div>
                 </div>
@@ -377,7 +412,6 @@ export default function App() {
                     const txList = transactions.filter(t => t.symbol === s.name && (filterMember === 'all' || t.member === filterMember));
                     if (txList.length === 0 && investExpanded !== s.name) return null;
                     
-                    // 計算該標的目前過濾後的總合
                     const symTotalShares = txList.reduce((acc, curr) => acc + parseFloat(curr.shares || 0), 0);
                     const symTotalCost = txList.reduce((acc, curr) => acc + parseFloat(curr.cost || 0), 0);
 
@@ -385,20 +419,20 @@ export default function App() {
                       <div key={s.name} className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100">
                         <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-100" onClick={() => setInvestExpanded(investExpanded === s.name ? null : s.name)}>
                           <div>
-                            <span className="text-sm font-black uppercase tracking-wide">{s.name}</span>
-                            <div className="text-[10px] font-black text-slate-400">
-                               持有: {symTotalShares.toLocaleString()} 股 | 成本: ${symTotalCost.toLocaleString()}
+                            <span className="text-sm font-black uppercase tracking-wide text-slate-800">{s.name}</span>
+                            <div className="text-[10px] font-black text-slate-400 mt-0.5">
+                               持有: <span className="text-slate-600">{symTotalShares.toLocaleString()}</span> 股 | 成本: <span className="text-slate-600">${symTotalCost.toLocaleString()}</span>
                             </div>
                           </div>
                           <div className="text-slate-400">{investExpanded === s.name ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
                         </div>
                         {investExpanded === s.name && (
-                          <div className="p-3 space-y-3">
+                          <div className="p-3 space-y-3 animate-in slide-in-from-top-2">
                             {txList.sort((a,b) => b.date.localeCompare(a.date)).map(t => (
-                              <div key={t.id} className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-2 relative group">
+                              <div key={t.id} className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-2 relative group hover:border-[#8B9D83]/20 transition-all">
                                 <div className="flex justify-between items-center">
                                   <span className="text-[10px] font-black text-slate-400">{t.date} · {t.member}</span>
-                                  <button onClick={() => deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'transactions', t.id))} className="text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
+                                  <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'transactions', t.id))} className="text-slate-200 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
                                 </div>
                                 <div className="flex justify-between items-center font-black">
                                   <span className="text-xs text-slate-500">股數 {t.shares}</span>
@@ -418,7 +452,7 @@ export default function App() {
         )}
 
         {activeTab === 'dividends' && (
-          <div className="space-y-4 animate-in slide-in-from-right-4">
+          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
             {!isReady ? ( <SetupGuide onGo={() => setActiveTab('masters')} /> ) : (
               <>
                 <h2 className="font-black text-lg text-slate-800 flex items-center gap-2 italic"><DollarSign size={20}/> 領息流水管理</h2>
@@ -429,10 +463,10 @@ export default function App() {
                    </div>
                    <div className="flex flex-wrap md:flex-nowrap gap-3 items-center">
                       <div className="flex flex-[2] gap-2">
-                        <select value={divDraft.member} onChange={e => setDivDraft({...divDraft, member: e.target.value})} className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 shadow-sm">
+                        <select value={divDraft.member} onChange={e => setDivDraft({...divDraft, member: e.target.value})} className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 shadow-sm text-slate-900">
                           {members.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                         </select>
-                        <select value={divDraft.symbol} onChange={e => setDivDraft({...divDraft, symbol: e.target.value})} className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 shadow-sm uppercase">
+                        <select value={divDraft.symbol} onChange={e => setDivDraft({...divDraft, symbol: e.target.value})} className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 shadow-sm uppercase text-slate-900">
                           {symbols.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                         </select>
                       </div>
@@ -441,7 +475,7 @@ export default function App() {
                           <span className="text-[10px] text-[#8B9D83] font-black mr-1">NT$</span>
                           <CompactNumberInput value={divDraft.amount} onChange={v => setDivDraft({...divDraft, amount: v})} className="w-full text-right border-none shadow-none focus:ring-0" />
                         </div>
-                        <button onClick={() => safeAddDoc('dividends', divDraft)} className="bg-[#8B9D83] text-white p-2.5 rounded-xl shadow-lg active:scale-90 hover:bg-[#7A8C72] transition-all"><Send size={20} /></button>
+                        <button onClick={() => safeAddDoc('dividends', divDraft)} className="bg-[#8B9D83] text-white p-2.5 rounded-xl shadow-lg active:scale-90 hover:bg-[#7A8C72] transition-all flex items-center justify-center border-2 border-white/20"><Send size={20} /></button>
                       </div>
                    </div>
                 </div>
@@ -456,20 +490,20 @@ export default function App() {
                       <div key={s.name} className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100">
                         <div className="p-4 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => setDivExpanded(divExpanded === s.name ? null : s.name)}>
                           <div>
-                            <span className="text-sm font-black uppercase tracking-wide">{s.name}</span>
-                            <div className="text-[10px] font-black text-blue-400">累計領息: ${symTotalDiv.toLocaleString()}</div>
+                            <span className="text-sm font-black uppercase tracking-wide text-slate-800">{s.name}</span>
+                            <div className="text-[10px] font-black text-blue-400 mt-0.5">累計領息: <span className="text-blue-600">${symTotalDiv.toLocaleString()}</span></div>
                           </div>
                           <div className="text-slate-400">{divExpanded === s.name ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
                         </div>
                         {divExpanded === s.name && (
-                          <div className="p-3 space-y-2">
+                          <div className="p-3 space-y-2 animate-in slide-in-from-top-2">
                             {divList.sort((a,b) => b.date.localeCompare(a.date)).map(d => (
-                              <div key={d.id} className="p-3 bg-white rounded-2xl border border-slate-50 shadow-sm flex justify-between items-center group">
+                              <div key={d.id} className="p-3 bg-white rounded-2xl border border-slate-50 shadow-sm flex justify-between items-center group hover:border-[#8B9D83]/20 transition-all">
                                 <div>
                                   <div className="text-[9px] font-black text-slate-400">{d.date} · {d.member}</div>
                                   <div className="text-sm font-black text-[#8B9D83] font-mono">${parseFloat(d.amount).toLocaleString()}</div>
                                 </div>
-                                <button onClick={() => deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'dividends', d.id))} className="text-slate-200 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
+                                <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'dividends', d.id))} className="text-slate-200 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
                               </div>
                             ))}
                           </div>
@@ -484,19 +518,19 @@ export default function App() {
         )}
 
         {activeTab === 'masters' && (
-          <div className="space-y-6 animate-in slide-in-from-bottom-4">
+          <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
             <div className="bg-white p-6 md:p-10 rounded-[3rem] shadow-sm border border-slate-50 space-y-8">
                <section className="space-y-4">
                  <h3 className="font-black text-xs text-slate-400 uppercase tracking-widest flex items-center gap-2"><Users size={18}/> 人員管理中心</h3>
                  <div className="flex gap-2 max-w-md">
-                   <input placeholder="輸入姓名 (例如: 媽媽)" className="flex-1 py-3 px-5 text-sm font-black bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 ring-[#8B9D83]/20" value={newMemName} onChange={e => setNewMemName(e.target.value)} />
-                   <button onClick={async () => { if(newMemName.trim()) { await safeAddDoc('members', { name: newMemName.trim() }); setNewMemName(""); } }} className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black shadow-lg">建立</button>
+                   <input placeholder="輸入姓名 (例如: 媽媽)" className="flex-1 py-3 px-5 text-sm font-black bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 ring-[#8B9D83]/20 text-slate-800" value={newMemName} onChange={e => setNewMemName(e.target.value)} />
+                   <button onClick={async () => { if(newMemName.trim()) { await safeAddDoc('members', { name: newMemName.trim() }); setNewMemName(""); } }} className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black shadow-lg hover:bg-blue-700 transition-all">建立</button>
                  </div>
                  <div className="flex flex-wrap gap-2">
                    {members.map(m => (
-                     <span key={m.id} className="bg-blue-50 text-xs font-black text-blue-800 px-4 py-2 rounded-xl border border-blue-100 flex items-center gap-2 group">
+                     <span key={m.id} className="bg-blue-50 text-xs font-black text-blue-800 px-4 py-2 rounded-xl border border-blue-100 flex items-center gap-2 group shadow-sm">
                        {m.name}
-                       <button onClick={() => deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'members', m.id))} className="text-blue-300 hover:text-red-500 font-black">×</button>
+                       <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'members', m.id))} className="text-blue-300 hover:text-red-500 font-black px-1 transition-colors">×</button>
                      </span>
                    ))}
                  </div>
@@ -505,22 +539,26 @@ export default function App() {
                <section className="space-y-4 border-t border-slate-50 pt-8">
                  <h3 className="font-black text-xs text-slate-400 uppercase tracking-widest flex items-center gap-2"><Globe size={18}/> 標的管理中心</h3>
                  <div className="flex gap-2 max-w-md">
-                   <input placeholder="標的代碼 (例如: 0050)" className="flex-1 uppercase py-3 px-5 text-sm font-black bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 ring-[#8B9D83]/20" value={newSymName} onChange={e => setNewSymName(e.target.value.toUpperCase())} />
-                   <button onClick={async () => { if(newSymName.trim()) { await safeAddDoc('symbols', { name: newSymName.trim(), currentPrice: 0 }); setNewSymName(""); } }} className="bg-[#8B9D83] text-white px-8 py-3 rounded-2xl font-black shadow-lg">新增</button>
+                   <input placeholder="標的代碼 (例如: 0050)" className="flex-1 uppercase py-3 px-5 text-sm font-black bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 ring-[#8B9D83]/20 text-slate-800" value={newSymName} onChange={e => setNewSymName(e.target.value.toUpperCase())} />
+                   <button onClick={async () => { if(newSymName.trim()) { await safeAddDoc('symbols', { name: newSymName.trim(), currentPrice: 0 }); setNewSymName(""); } }} className="bg-[#8B9D83] text-white px-8 py-3 rounded-2xl font-black shadow-lg hover:bg-[#7A8C72] transition-all">新增</button>
                  </div>
                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                    {symbols.map(s => {
                      const draft = editSym[s.id] || s; 
                      const hasChanged = Number(draft.currentPrice) !== Number(s.currentPrice);
                      return (
-                       <div key={s.id} className={`p-4 rounded-[2rem] border-2 transition-all ${hasChanged ? 'border-amber-300 bg-amber-50/20' : 'bg-white border-slate-100'}`}>
+                       <div key={s.id} className={`p-4 rounded-[2rem] border-2 transition-all group ${hasChanged ? 'border-amber-300 bg-amber-50/20' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`}>
                          <div className="flex justify-between items-center mb-1">
                             <span className="text-[10px] font-black uppercase text-slate-400">{s.name}</span>
-                            <button onClick={() => deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'symbols', s.id))} className="text-slate-300 hover:text-red-500 text-sm">×</button>
+                            <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'symbols', s.id))} className="text-slate-200 hover:text-red-500 text-sm font-black transition-colors opacity-0 group-hover:opacity-100">×</button>
                          </div>
                          <div className="flex items-center gap-1">
-                           <CompactNumberInput value={draft.currentPrice} onChange={v => setEditSym({...editSym, [s.id]: {...draft, currentPrice: v}})} className="w-full text-center font-mono text-emerald-600 border-none shadow-none focus:ring-0 p-0" placeholder="0" />
-                           {hasChanged && ( <button onClick={() => handleUpdate('symbols', s.id, draft)} className="bg-emerald-600 text-white p-1 rounded-lg"><Check size={12}/></button> )}
+                           <CompactNumberInput value={draft.currentPrice} onChange={v => setEditSym({...editSym, [s.id]: {...draft, currentPrice: v}})} className="w-full text-center font-mono text-[#8B9D83] border-none shadow-none focus:ring-0 p-0 text-base" placeholder="0" />
+                           {hasChanged && ( 
+                             <button onClick={() => handleUpdate('symbols', s.id, draft)} className="bg-emerald-600 text-white p-1 rounded-lg animate-pulse">
+                               <Check size={12}/>
+                             </button> 
+                           )}
                          </div>
                        </div>
                      );
@@ -529,7 +567,10 @@ export default function App() {
                </section>
                
                <div className="pt-8 text-center border-t border-slate-50">
-                  <a href="https://nayomoney.com/" target="_blank" rel="noopener noreferrer" className="inline-block bg-[#8B9D83] text-white px-12 py-5 rounded-[2.5rem] font-black text-lg shadow-2xl hover:scale-105 active:scale-95 transition-all">探索更多財富秘密 <ExternalLink size={20} className="inline ml-2" /></a>
+                  <a href="https://nayomoney.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 bg-[#8B9D83] text-white px-12 py-5 rounded-[2.5rem] font-black text-lg shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                    探索更多財富秘密 <ExternalLink size={20} />
+                  </a>
+                  <p className="text-[10px] text-slate-300 mt-6 font-black uppercase tracking-[0.3em] opacity-40 italic">nayo money official support</p>
                </div>
             </div>
           </div>
@@ -553,25 +594,25 @@ export default function App() {
 const StatCard = ({ title, value, sub, color }) => (
   <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 text-center relative overflow-hidden group hover:shadow-md transition-shadow">
     <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: color }}></div>
-    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{title}</p>
-    <p className="text-2xl md:text-3xl font-mono font-black tracking-tighter" style={{ color }}>{value}</p>
-    <p className="text-[9px] text-slate-400 font-black italic tracking-wider uppercase opacity-60 mt-2">{sub}</p>
+    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 leading-none">{title}</p>
+    <p className="text-2xl md:text-4xl font-mono font-black tracking-tighter leading-none" style={{ color }}>{value}</p>
+    <p className="text-[9px] text-slate-400 font-black italic tracking-wider uppercase opacity-60 mt-3 leading-none">{sub}</p>
   </div>
 );
 
 const SetupGuide = ({ onGo }) => (
   <div className="bg-white p-12 rounded-[3rem] text-center space-y-6 shadow-xl border border-slate-50 animate-in zoom-in max-w-md mx-auto mt-12">
-    <div className="bg-amber-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto text-amber-500 mb-2"><AlertCircle size={48} /></div>
+    <div className="bg-amber-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto text-amber-500 mb-2 shadow-inner"><AlertCircle size={48} /></div>
     <div className="space-y-2">
       <h3 className="text-2xl font-black tracking-tight text-slate-800">尚未初始化數據</h3>
-      <p className="text-sm text-slate-500 font-bold px-4">請先前往「管理」分頁建立家庭成員與追蹤標的。</p>
+      <p className="text-sm text-slate-500 font-bold px-4 leading-relaxed">請先前往「管理」分頁建立家庭成員與追蹤標的。</p>
     </div>
-    <button onClick={onGo} className="bg-[#8B9D83] text-white w-full py-4 rounded-[1.5rem] font-black shadow-lg flex items-center justify-center gap-2">立即前往 <ArrowRight size={20}/></button>
+    <button onClick={onGo} className="bg-[#8B9D83] text-white w-full py-5 rounded-[1.8rem] font-black shadow-lg flex items-center justify-center gap-2 hover:bg-[#7A8C72] transition-all">立即前往 <ArrowRight size={20}/></button>
   </div>
 );
 
 const NavBtn = ({ active, onClick, icon, label }) => (
-  <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1 transition-all px-4 py-2 min-w-[70px] rounded-full ${active ? 'bg-[#8B9D83] text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}>
+  <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1 transition-all duration-300 px-4 py-2 min-w-[70px] rounded-full ${active ? 'bg-[#8B9D83] text-white shadow-lg scale-105' : 'text-slate-400 hover:bg-slate-50'}`}>
     {icon}
     <span className={`text-[10px] font-black tracking-widest ${active ? 'text-white' : 'text-slate-500'}`}>{label}</span>
   </button>
