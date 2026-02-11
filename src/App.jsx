@@ -507,17 +507,29 @@ export default function App() {
                     if (!hasInvested && divList.length === 0 && divExpanded !== s.name) return null;
                     const currentDraft = divDrafts[s.name] || { amount: '0', member: members[0]?.name || '', date: new Date().toISOString().split('T')[0] };
                     return (
-                      <div key={s.name} className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100 h-fit transition-all hover:shadow-md text-slate-800 text-left">
-                        <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => setInvestExpanded(investExpanded === s.name ? null : s.name)}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-base font-black uppercase text-slate-800 text-left">{s.name}</span>
-                            {/* 💡 投入清單外顯總持股 */}
-                            <span className="bg-[#8B9D83]/10 text-[#8B9D83] text-[10px] px-2 py-0.5 rounded-full font-black">{totalSharesForSym} 股</span>
-                          </div>
-                          <div className="text-slate-400">{investExpanded === s.name ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}</div>
+                      <div key={s.name} className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100 h-fit text-slate-800 text-left text-slate-800 text-left">
+                        <div className="p-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center cursor-pointer hover:bg-blue-100 transition-colors text-slate-800 text-left text-slate-800 text-left text-slate-800" onClick={() => setDivExpanded(divExpanded === s.name ? null : s.name)}>
+                          <span className="text-base font-black uppercase tracking-wide text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left">{s.name} <span className="text-xs opacity-40 text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left">({divList.length})</span></span>
+                          <div className="text-slate-400 text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left">{divExpanded === s.name ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
                         </div>
                         {divExpanded === s.name && (
                           <div className="p-3 space-y-4 animate-in slide-in-from-top-2 text-slate-900 text-left text-slate-800 text-left">
+                            <div className="bg-[#8B9D83]/10 p-3 rounded-2xl border border-[#8B9D83]/20 space-y-3 mb-2 text-slate-800 shadow-inner text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">
+                               <div className="flex justify-between items-center text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">
+                                  <p className="text-[11px] font-black text-[#8B9D83] uppercase flex items-center gap-1 text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left"><PlusCircle size={12}/> 快速新增標的領息</p>
+                                  <input type="date" value={currentDraft.date} onChange={e => setDivDrafts({...divDrafts, [s.name]: {...currentDraft, date: e.target.value}})} className="text-[10px] bg-transparent outline-none text-[#8B9D83] font-black cursor-pointer shadow-none text-left text-slate-800 text-left text-slate-800 text-left" />
+                               </div>
+                               <div className="flex gap-2 items-center text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left text-slate-800">
+                                  <select value={currentDraft.member} onChange={e => setDivDrafts({...divDrafts, [s.name]: {...currentDraft, member: e.target.value}})} className="w-24 bg-white text-xs p-2 rounded-xl font-black border border-[#8B9D83]/20 outline-none text-slate-900 shadow-sm text-left text-slate-800 text-left text-slate-800 text-left">
+                                    {members.map(m => <option key={m.id} value={m.name} className="text-slate-900">{m.name}</option>)}
+                                  </select>
+                                  <div className="flex-1 flex items-center bg-white border border-[#8B9D83]/20 rounded-xl px-3 py-1 shadow-inner text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">
+                                      <span className="text-[10px] text-[#8B9D83] font-black mr-1 text-left text-[#8B9D83] text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">NT$</span>
+                                      <CompactNumberInput placeholder="金額" value={currentDraft.amount} onChange={v => setDivDrafts({...divDrafts, [s.name]: {...currentDraft, amount: v}})} className="w-full text-right bg-transparent border-none shadow-none focus:ring-0 font-black text-sm text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left" />
+                                  </div>
+                                  <button onClick={async () => { await safeAddDoc('dividends', { ...currentDraft, symbol: s.name }); setDivDrafts({...divDrafts, [s.name]: {...currentDraft, amount: '0'}}); }} className="bg-[#8B9D83] text-white p-2 rounded-xl shadow active:scale-90 flex items-center justify-center border border-white/20 text-white text-left text-white text-left"><Send size={16} /></button>
+                               </div>
+                            </div>
                             <div className="border-t border-slate-100 pt-3 space-y-3 text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">
                               {divList.sort((a,b) => b.date.localeCompare(a.date)).map(d => {
                                 const draft = editDiv[d.id] || d;
