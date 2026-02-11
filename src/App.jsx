@@ -358,7 +358,8 @@ export default function App() {
                   <div className="flex items-center gap-3 mb-3 text-[#8B9D83]">
                     <Sparkles size={20} fill="#8B9D83"/>
                     <h3 className="text-sm font-black uppercase tracking-widest leading-none">💡 財富自由充電站</h3>
-                  <a href="https://nayomoney.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-[#8B9D83] text-white px-5 py-2.5 rounded-2xl text-xs font-black shadow-lg shadow-[#8B9D83]/20 hover:scale-105 active:scale-95 transition-all text-white"><ArrowUpRight size={14}/>立即前往</a>
+                    <a href="https://nayomoney.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-[#8B9D83] text-white px-5 py-2.5 rounded-2xl text-xs font-black shadow-lg shadow-[#8B9D83]/20 hover:scale-105 active:scale-95 transition-all text-white"><ArrowUpRight size={14}/> 立即獲取底氣</a>
+                  </div>
                 </div>
               </div>
 
