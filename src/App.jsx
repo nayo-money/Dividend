@@ -327,6 +327,8 @@ export default function App() {
                         <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setExpandedSymbol(expandedSymbol === p.name ? null : p.name)}>
                           <div className="flex items-center gap-2 text-slate-800">
                             <span className="text-base md:text-lg font-black uppercase">{p.name}</span>
+                            {/* 💡 監測盤外顯總股數 */}
+                            <span className="bg-[#8B9D83]/10 text-[#8B9D83] text-[9px] px-2 py-0.5 rounded-full font-black">{p.shares} 股</span>
                             <div className="text-slate-400">{expandedSymbol === p.name ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
                           </div>
                           <div className="text-right">
