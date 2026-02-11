@@ -513,10 +513,6 @@ export default function App() {
                         {divExpanded === s.name && (
                           <div className="p-3 space-y-4 animate-in slide-in-from-top-2 text-slate-900 text-left text-slate-800 text-left">
                             <div className="bg-[#8B9D83]/10 p-3 rounded-2xl border border-[#8B9D83]/20 space-y-3 mb-2 text-slate-800 shadow-inner text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">
-                               <div className="flex justify-between items-center text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">
-                                  <p className="text-[11px] font-black text-[#8B9D83] uppercase flex items-center gap-1 text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left"><PlusCircle size={12}/> 快速新增標的領息</p>
-                                  <input type="date" value={currentDraft.date} onChange={e => setDivDrafts({...divDrafts, [s.name]: {...currentDraft, date: e.target.value}})} className="text-[10px] bg-transparent outline-none text-[#8B9D83] font-black cursor-pointer shadow-none text-left text-slate-800 text-left text-slate-800 text-left" />
-                               </div>
                                <div className="flex gap-2 items-center text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left text-slate-800">
                                   <select value={currentDraft.member} onChange={e => setDivDrafts({...divDrafts, [s.name]: {...currentDraft, member: e.target.value}})} className="w-24 bg-white text-xs p-2 rounded-xl font-black border border-[#8B9D83]/20 outline-none text-slate-900 shadow-sm text-left text-slate-800 text-left text-slate-800 text-left">
                                     {members.map(m => <option key={m.id} value={m.name} className="text-slate-900">{m.name}</option>)}
