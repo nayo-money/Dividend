@@ -327,8 +327,6 @@ export default function App() {
                         <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setExpandedSymbol(expandedSymbol === p.name ? null : p.name)}>
                           <div className="flex items-center gap-2 text-slate-800">
                             <span className="text-base md:text-lg font-black uppercase">{p.name}</span>
-                            {/* 💡 監測盤外顯總股數 */}
-                            <span className="bg-[#8B9D83]/10 text-[#8B9D83] text-[9px] px-2 py-0.5 rounded-full font-black">{p.shares} 股</span>
                             <div className="text-slate-400">{expandedSymbol === p.name ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
                           </div>
                           <div className="text-right">
@@ -514,22 +512,6 @@ export default function App() {
                         </div>
                         {divExpanded === s.name && (
                           <div className="p-3 space-y-4 animate-in slide-in-from-top-2 text-slate-900 text-left text-slate-800 text-left">
-                            <div className="bg-[#8B9D83]/10 p-3 rounded-2xl border border-[#8B9D83]/20 space-y-3 mb-2 text-slate-800 shadow-inner text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">
-                               <div className="flex justify-between items-center text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">
-                                  <p className="text-[11px] font-black text-[#8B9D83] uppercase flex items-center gap-1 text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left"><PlusCircle size={12}/> 快速新增標的領息</p>
-                                  <input type="date" value={currentDraft.date} onChange={e => setDivDrafts({...divDrafts, [s.name]: {...currentDraft, date: e.target.value}})} className="text-[10px] bg-transparent outline-none text-[#8B9D83] font-black cursor-pointer shadow-none text-left text-slate-800 text-left text-slate-800 text-left" />
-                               </div>
-                               <div className="flex gap-2 items-center text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left text-slate-800">
-                                  <select value={currentDraft.member} onChange={e => setDivDrafts({...divDrafts, [s.name]: {...currentDraft, member: e.target.value}})} className="w-24 bg-white text-xs p-2 rounded-xl font-black border border-[#8B9D83]/20 outline-none text-slate-900 shadow-sm text-left text-slate-800 text-left text-slate-800 text-left">
-                                    {members.map(m => <option key={m.id} value={m.name} className="text-slate-900">{m.name}</option>)}
-                                  </select>
-                                  <div className="flex-1 flex items-center bg-white border border-[#8B9D83]/20 rounded-xl px-3 py-1 shadow-inner text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">
-                                      <span className="text-[10px] text-[#8B9D83] font-black mr-1 text-left text-[#8B9D83] text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">NT$</span>
-                                      <CompactNumberInput placeholder="金額" value={currentDraft.amount} onChange={v => setDivDrafts({...divDrafts, [s.name]: {...currentDraft, amount: v}})} className="w-full text-right bg-transparent border-none shadow-none focus:ring-0 font-black text-sm text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left" />
-                                  </div>
-                                  <button onClick={async () => { await safeAddDoc('dividends', { ...currentDraft, symbol: s.name }); setDivDrafts({...divDrafts, [s.name]: {...currentDraft, amount: '0'}}); }} className="bg-[#8B9D83] text-white p-2 rounded-xl shadow active:scale-90 flex items-center justify-center border border-white/20 text-white text-left text-white text-left"><Send size={16} /></button>
-                               </div>
-                            </div>
                             <div className="border-t border-slate-100 pt-3 space-y-3 text-slate-800 text-left text-slate-800 text-left text-slate-800 text-left">
                               {divList.sort((a,b) => b.date.localeCompare(a.date)).map(d => {
                                 const draft = editDiv[d.id] || d;
