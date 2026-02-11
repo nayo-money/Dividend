@@ -507,10 +507,14 @@ export default function App() {
                     if (!hasInvested && divList.length === 0 && divExpanded !== s.name) return null;
                     const currentDraft = divDrafts[s.name] || { amount: '0', member: members[0]?.name || '', date: new Date().toISOString().split('T')[0] };
                     return (
-                      <div key={s.name} className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100 h-fit text-slate-800 text-left text-slate-800 text-left">
-                        <div className="p-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center cursor-pointer hover:bg-blue-100 transition-colors text-slate-800 text-left text-slate-800 text-left text-slate-800" onClick={() => setDivExpanded(divExpanded === s.name ? null : s.name)}>
-                          <span className="text-base font-black uppercase tracking-wide text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left">{s.name} <span className="text-xs opacity-40 text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left">({divList.length})</span></span>
-                          <div className="text-slate-400 text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left">{divExpanded === s.name ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
+                      <div key={s.name} className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100 h-fit transition-all hover:shadow-md text-slate-800 text-left">
+                        <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => setInvestExpanded(investExpanded === s.name ? null : s.name)}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-base font-black uppercase text-slate-800 text-left">{s.name}</span>
+                            {/* 💡 投入清單外顯總持股 */}
+                            <span className="bg-[#8B9D83]/10 text-[#8B9D83] text-[10px] px-2 py-0.5 rounded-full font-black">{totalSharesForSym} 股</span>
+                          </div>
+                          <div className="text-slate-400">{investExpanded === s.name ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}</div>
                         </div>
                         {divExpanded === s.name && (
                           <div className="p-3 space-y-4 animate-in slide-in-from-top-2 text-slate-900 text-left text-slate-800 text-left">
