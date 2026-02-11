@@ -17,15 +17,15 @@ import {
 } from 'lucide-react';
 
 /**
- * nayo money 股利工具 v23.0 - 月平均統計強化版
+ * nayo money 股利工具 v25.0 - iPhone App 化優化版
  * 更新重點：
- * 1. 月平均統計：在「每月領息現金流」旁新增自動計算的「月平均股利」數值。
- * 2. 視覺平衡：維持大字體顯示標的與人員，縮窄數字輸入框（w-16/w-20）。
- * 3. 摺疊系統：投入與領息分頁全面採用「代碼分群」收合管理。
- * 4. RWD 佈局：電腦版導覽列向右縮排，手機版極致扁平化。
+ * 1. iPhone 圖示修復：動態注入 apple-touch-icon，支援「加入主畫面」顯示 App 圖標。
+ * 2. 導覽列防溢出：優化底部選單 Padding 與字體比例，解決文字圖案超出底框問題。
+ * 3. 全螢幕支援：加入 mobile-web-app-capable 標籤，App 開啟時不顯示網址列。
+ * 4. 監測數據強化：維持標的成本、回本(小數2位)與月平均功能。
  */
 
-// --- 0. 樣式與 CDN ---
+// --- 0. 樣式與頭部元數據處理 ---
 if (typeof document !== 'undefined') {
   const tailwindScript = document.getElementById('tailwind-cdn');
   if (!tailwindScript) {
@@ -101,12 +101,10 @@ export default function App() {
   const [transactions, setTransactions] = useState([]); 
   const [filterMember, setFilterMember] = useState('all');
 
-  // 新增草稿
+  // 新增與管理狀態
   const [txDraft, setTxDraft] = useState({ member: '', symbol: '', cost: '0', shares: '0', date: new Date().toISOString().split('T')[0] });
   const [divDraft, setDivDraft] = useState({ member: '', symbol: '', amount: '0', date: new Date().toISOString().split('T')[0] });
   const [divDrafts, setDivDrafts] = useState({});
-
-  // 管理輸入框
   const [newMemName, setNewMemName] = useState("");
   const [newSymName, setNewSymName] = useState("");
 
@@ -114,13 +112,37 @@ export default function App() {
   const [editDiv, setEditDiv] = useState({});
   const [editSym, setEditSym] = useState({});
 
+  // --- 關鍵：iPhone App 化與 Favicon 設定 ---
   useEffect(() => {
     document.title = "nayo money股利工具";
-    const faviconSvg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='30' fill='%238B9D83'/><text y='72' x='28' font-size='60' font-weight='bold' fill='white' font-family='Arial'>$</text></svg>`.trim();
+    
+    // 產生 SVG 圖示資料
+    const iconSvg = `
+      <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+        <rect width='100' height='100' rx='25' fill='%238B9D83'/>
+        <text y='70' x='25' font-size='60' font-weight='bold' fill='white' font-family='Arial'>$</text>
+      </svg>
+    `.trim();
+    const iconData = `data:image/svg+xml,${iconSvg.replace(/#/g, '%23')}`;
+
+    // 1. 設定瀏覽器分頁小圖
     const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
-    link.type = 'image/svg+xml'; link.rel = 'icon';
-    link.href = `data:image/svg+xml,${faviconSvg.replace(/#/g, '%23')}`;
-    document.getElementsByTagName('head')[0].appendChild(link);
+    link.type = 'image/svg+xml'; link.rel = 'icon'; link.href = iconData;
+    document.head.appendChild(link);
+
+    // 2. 設定 iPhone 加入主畫面的 App 圖示
+    const appleLink = document.querySelector("link[rel='apple-touch-icon']") || document.createElement('link');
+    appleLink.rel = 'apple-touch-icon'; appleLink.href = iconData;
+    document.head.appendChild(appleLink);
+
+    // 3. 支援全螢幕開啟模式 (像 App 一樣)
+    const metaCap = document.querySelector("meta[name='apple-mobile-web-app-capable']") || document.createElement('meta');
+    metaCap.name = 'apple-mobile-web-app-capable'; metaCap.content = 'yes';
+    document.head.appendChild(metaCap);
+
+    const metaStatus = document.querySelector("meta[name='apple-mobile-web-app-status-bar-style']") || document.createElement('meta');
+    metaStatus.name = 'apple-mobile-web-app-status-bar-style'; metaStatus.content = 'black-translucent';
+    document.head.appendChild(metaStatus);
   }, []);
 
   useEffect(() => {
@@ -199,7 +221,6 @@ export default function App() {
       p.returnIncDiv = p.cost > 0 ? ((p.shares * p.currentPrice + p.div - p.cost) / p.cost) * 100 : 0;
     });
 
-    // 每月領息現金流邏輯
     const monthlyData = {};
     fDivs.forEach(d => {
       const date = new Date(d.date);
@@ -207,18 +228,10 @@ export default function App() {
       const key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
       monthlyData[key] = (monthlyData[key] || 0) + Number(d.amount);
     });
-
     const monthlyCount = Object.keys(monthlyData).length;
     const avgMonthly = monthlyCount > 0 ? totalDiv / monthlyCount : 0;
 
-    return {
-      totalDiv, totalMarketValue, totalCost,
-      recovery: totalCost > 0 ? (totalDiv / totalCost) * 100 : 0,
-      overallReturn: totalCost > 0 ? ((totalMarketValue + totalDiv - totalCost) / totalCost) * 100 : 0,
-      items: Object.values(portfolio).filter(i => i.cost !== 0 || i.div > 0 || transactions.some(t => t.symbol === i.name)),
-      monthly: Object.entries(monthlyData).sort((a, b) => b[0].localeCompare(a[0])),
-      avgMonthly
-    };
+    return { totalDiv, totalMarketValue, totalCost, recovery: totalCost > 0 ? (totalDiv / totalCost) * 100 : 0, overallReturn: totalCost > 0 ? ((totalMarketValue + totalDiv - totalCost) / totalCost) * 100 : 0, items: Object.values(portfolio).filter(i => i.cost !== 0 || i.div > 0 || transactions.some(t => t.symbol === i.name)), monthly: Object.entries(monthlyData).sort((a, b) => b[0].localeCompare(a[0])), avgMonthly };
   }, [dividends, transactions, symbols, filterMember]);
 
   const isReady = members.length > 0 && symbols.length > 0;
@@ -246,7 +259,7 @@ export default function App() {
   if (loading) return (
     <div className="min-h-screen bg-[#FDFBF7] flex flex-col items-center justify-center font-bold text-[#8B9D83]">
       <RefreshCw size={32} className="animate-spin mb-2" />
-      <p className="text-xs uppercase tracking-widest italic opacity-60">Nayo Money Live</p>
+      <p className="text-xs uppercase tracking-widest italic opacity-60">Nayo Money Booting</p>
     </div>
   );
 
@@ -257,7 +270,7 @@ export default function App() {
           <ShieldCheck size={44} />
         </div>
         <h1 className="text-3xl font-black tracking-tighter">nayo money</h1>
-        <p className="text-[#8B9D83] text-sm mt-2 font-bold mb-10 italic">理財指揮官 v23.0</p>
+        <p className="text-[#8B9D83] text-sm mt-2 font-bold mb-10 italic">全家人的理財指揮官</p>
         <button onClick={handleGoogleLogin} className="w-full bg-white border-2 border-slate-100 py-4 rounded-2xl flex items-center justify-center gap-4 font-black text-slate-700 hover:bg-slate-50 transition-all shadow-md active:scale-95 mx-auto">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G" className="w-6 h-6" />
           Google 帳號登入
@@ -271,11 +284,11 @@ export default function App() {
     <div className="min-h-screen bg-[#FDFBF7] text-slate-900 pb-20 font-sans select-none overflow-x-hidden">
       <header className="bg-[#8B9D83] text-white py-1.5 px-4 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Layers size={18} />
-            <h1 className="text-base md:text-xl font-black tracking-tight leading-none text-white text-left">nayo money股利工具</h1>
-          </div>
           <div className="flex items-center gap-2">
+            <Layers size={16} />
+            <h1 className="text-sm md:text-base font-black tracking-tight leading-none">nayo money股利工具</h1>
+          </div>
+          <div className="flex items-center gap-2 text-slate-800">
               <select value={filterMember} onChange={e => setFilterMember(e.target.value)} className="bg-white/20 text-white text-[9px] md:text-sm font-black border-none outline-none rounded px-2 py-0.5 backdrop-blur-md cursor-pointer appearance-none shadow-sm">
                 <option value="all" className="bg-white font-bold">全家人</option>
                 {members.map(m => <option key={m.id} value={m.name} className="bg-white font-bold">{m.name}</option>)}
@@ -288,31 +301,33 @@ export default function App() {
       <main className="max-w-7xl mx-auto p-3 md:p-6 lg:p-12 space-y-4 lg:space-y-8 text-slate-900">
         
         {activeTab === 'overview' && (
-          <div className="space-y-5 animate-in fade-in duration-300">
+          <div className="space-y-5 animate-in fade-in duration-300 text-slate-800">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-center">
               <StatCard title="總投入" value={`$${Math.round(stats.totalCost).toLocaleString()}`} sub="成本本金" color="#4A4A4A" />
               <StatCard title="總市值" value={`$${Math.round(stats.totalMarketValue).toLocaleString()}`} sub="目前價值" color="#3B82F6" />
-              <StatCard title="回本率" value={`${stats.recovery.toFixed(1)}%`} sub="股利回收" color="#8B9D83" />
+              <StatCard title="回本率" value={`${stats.recovery.toFixed(2)}%`} sub="回收比重" color="#8B9D83" />
               <StatCard title="總報酬" value={`${stats.overallReturn.toFixed(1)}%`} sub="含息累積" color={stats.overallReturn >= 0 ? "#10B981" : "#EF4444"} />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-10 text-slate-800">
-              <div className="bg-white rounded-[2rem] p-5 md:p-8 shadow-sm border border-slate-100 text-left">
-                <h3 className="font-black text-slate-800 text-sm md:text-base tracking-widest uppercase border-b-2 pb-2 mb-4 flex items-center gap-2"><Globe size={18} className="text-[#8B9D83]"/> 標的回本監測</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-10">
+              <div className="bg-white rounded-[2rem] p-5 md:p-8 shadow-sm border border-slate-100 text-left text-slate-800">
+                <h3 className="font-black text-slate-800 text-sm md:text-base tracking-widest uppercase border-b-2 pb-2 mb-4 flex items-center gap-2"><Globe size={18} className="text-[#8B9D83]"/> 標的回本監測盤</h3>
                 {stats.items.length === 0 ? <p className="text-center text-slate-400 text-sm py-12 italic">無紀錄</p> : 
                   stats.items.map(p => (
-                    <div key={p.name} className="space-y-2 bg-slate-50/60 p-4 rounded-3xl border border-transparent hover:border-[#8B9D83]/20 transition shadow-sm mb-3">
+                    <div key={p.name} className="space-y-1.5 bg-slate-50/60 p-4 rounded-3xl border border-transparent hover:border-[#8B9D83]/20 transition shadow-sm mb-3">
                       <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setExpandedSymbol(expandedSymbol === p.name ? null : p.name)}>
                         <div className="flex items-center gap-2">
                           <span className="text-base md:text-lg font-black uppercase text-slate-800">{p.name}</span>
                           <div className="text-slate-400">{expandedSymbol === p.name ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}</div>
                         </div>
                         <div className="text-right">
-                           <span className="text-[#8B9D83] font-mono font-black text-lg">回本 {Math.round((p.div/Math.max(p.cost, 1))*100)}%</span>
-                           <span className={`text-[11px] font-black block ${p.returnIncDiv >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>含息: {p.returnIncDiv.toFixed(1)}%</span>
+                           <span className="text-[#8B9D83] font-mono font-black text-lg block leading-none">回本 {((p.div/Math.max(p.cost, 1))*100).toFixed(2)}%</span>
+                           <span className="text-[10px] font-black text-slate-400 block mt-1">
+                             總成本: ${p.cost.toLocaleString()} | <span className={p.returnIncDiv >= 0 ? 'text-emerald-600' : 'text-red-500'}>含息: {p.returnIncDiv.toFixed(1)}%</span>
+                           </span>
                         </div>
                       </div>
-                      <div className="h-2 bg-white rounded-full overflow-hidden shadow-inner">
+                      <div className="h-2 bg-white rounded-full overflow-hidden shadow-inner mt-1">
                         <div className="h-full bg-[#8B9D83] transition-all duration-1000 shadow-[0_0_8px_rgba(139,157,131,0.25)]" style={{ width: `${Math.min((p.div/Math.max(p.cost, 1))*100, 100)}%` }}></div>
                       </div>
                       {expandedSymbol === p.name && (
@@ -320,7 +335,7 @@ export default function App() {
                           {p.lots.map(lot => (
                             <div key={lot.id} className="flex justify-between text-xs font-black text-slate-800">
                               <span><Clock size={12} className="inline mr-1 opacity-50"/>{lot.date}</span>
-                              <span>成本 $ {lot.cost.toLocaleString()} ({Math.round(lot.progress)}% 回本)</span>
+                              <span>成本 $ {lot.cost.toLocaleString()} ({lot.progress.toFixed(2)}% 回本)</span>
                             </div>
                           ))}
                         </div>
@@ -332,8 +347,7 @@ export default function App() {
 
               <div className="bg-white rounded-[2rem] p-5 md:p-8 shadow-sm border border-slate-100 h-fit text-slate-800">
                 <div className="flex justify-between items-center border-b-2 pb-2 mb-4">
-                  <h3 className="font-black text-slate-800 text-sm md:text-base tracking-widest uppercase flex items-center gap-2"><BarChart size={18} className="text-[#8B9D83]"/> 每月領息現金流</h3>
-                  {/* 💡 這裡新增了月平均顯示 */}
+                  <h3 className="font-black text-slate-800 text-sm md:text-base tracking-widest uppercase flex items-center gap-2 text-slate-800"><BarChart size={18} className="text-[#8B9D83]"/> 每月領息現金流</h3>
                   <div className="text-right">
                     <p className="text-[10px] text-slate-400 font-black uppercase leading-none">月平均股利</p>
                     <p className="text-base font-black text-[#8B9D83] font-mono leading-tight">NT$ {Math.round(stats.avgMonthly).toLocaleString()}</p>
@@ -348,32 +362,24 @@ export default function App() {
                       </div>
                     ))
                   }
-                  <div className="mt-6 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center">
-                    <p className="text-xs text-slate-400 font-bold italic leading-relaxed text-slate-400">
-                      「妳的印鈔機正持續運作中。每一分股利都是心安的能量。」
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* 投入紀錄 */}
+        {/* 投入紀錄區 */}
         {activeTab === 'invest' && (
           <div className="space-y-4 animate-in slide-in-from-right-4 duration-300 text-slate-900">
             {!isReady ? ( <SetupGuide onGo={() => setActiveTab('masters')} /> ) : (
               <>
-                <div className="px-2">
-                    <h2 className="font-black text-lg md:text-2xl text-slate-800 flex items-center gap-3 italic"><TrendingUp size={24} className="text-[#8B9D83]"/> 投入紀錄管理</h2>
-                </div>
-
+                <h2 className="font-black text-base md:text-lg text-slate-800 flex items-center gap-2 italic"><TrendingUp size={20}/> 投入紀錄管理</h2>
                 <div className="bg-[#8B9D83]/10 p-4 rounded-[2rem] border border-[#8B9D83]/20 shadow-sm space-y-4 mb-6">
                    <div className="flex justify-between items-center px-1">
                       <span className="text-xs font-black text-[#8B9D83] uppercase tracking-widest flex items-center gap-1"><PlusCircle size={14}/> 快速建立新投入</span>
                       <input type="date" value={txDraft.date} onChange={e => setTxDraft({...txDraft, date: e.target.value})} className="text-xs font-black bg-white rounded-lg px-3 py-1 border border-[#8B9D83]/20 outline-none shadow-sm cursor-pointer" />
                    </div>
-                   <div className="flex flex-wrap md:flex-nowrap gap-3 items-center text-slate-800">
+                   <div className="flex flex-wrap md:flex-nowrap gap-3 items-center">
                       <div className="flex flex-[2] gap-2">
                         <select value={txDraft.member} onChange={e => setTxDraft({...txDraft, member: e.target.value})} className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 text-slate-800 shadow-sm">
                           {members.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
@@ -392,7 +398,7 @@ export default function App() {
                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-slate-800 text-left">
                   {symbols.map(s => {
                     const txList = transactions.filter(t => t.symbol === s.name && (filterMember === 'all' || t.member === filterMember));
                     if (txList.length === 0 && investExpanded !== s.name) return null;
@@ -422,10 +428,10 @@ export default function App() {
                                   </div>
                                   <div className="flex flex-wrap md:flex-nowrap gap-2 items-center text-slate-800">
                                     <div className="flex flex-1 gap-2">
-                                      <select value={draft.member} onChange={(e) => setEditTx({...editTx, [t.id]: {...draft, member: e.target.value}})} className="flex-1 bg-white text-xs p-1.5 rounded-xl font-black text-slate-800 border border-slate-200">
+                                      <select value={draft.member} onChange={(e) => setEditTx({...editTx, [t.id]: {...draft, member: e.target.value}})} className="flex-1 bg-white text-xs p-1.5 rounded-xl font-black text-slate-800 border border-slate-200 shadow-sm">
                                         {members.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                                       </select>
-                                      <select value={draft.symbol} onChange={(e) => setEditTx({...editTx, [t.id]: {...draft, symbol: e.target.value}})} className="flex-1 bg-white text-xs p-1.5 rounded-xl font-black text-slate-800 border border-slate-200 uppercase">
+                                      <select value={draft.symbol} onChange={(e) => setEditTx({...editTx, [t.id]: {...draft, symbol: e.target.value}})} className="flex-1 bg-white text-xs p-1.5 rounded-xl font-black text-slate-800 border border-slate-200 uppercase shadow-sm">
                                         {symbols.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                       </select>
                                     </div>
@@ -448,22 +454,19 @@ export default function App() {
           </div>
         )}
 
-        {/* 領息紀錄 */}
+        {/* 領息紀錄區 */}
         {activeTab === 'dividends' && (
           <div className="space-y-4 animate-in slide-in-from-right-4 duration-300 text-slate-900">
             {!isReady ? ( <SetupGuide onGo={() => setActiveTab('masters')} /> ) : (
               <>
-                <div className="px-2 mb-2">
-                    <h2 className="font-black text-lg md:text-2xl text-slate-800 flex items-center gap-3 italic"><DollarSign size={24} className="text-[#8B9D83]"/> 領息流水管理</h2>
-                </div>
-
-                <div className="bg-[#8B9D83]/10 p-4 rounded-[2rem] border border-[#8B9D83]/20 shadow-sm space-y-4 mb-6 text-slate-800">
+                <h2 className="font-black text-lg md:text-2xl text-slate-800 flex items-center gap-3 italic"><DollarSign size={24} className="text-[#8B9D83]"/> 領息流水管理</h2>
+                <div className="bg-[#8B9D83]/10 p-4 rounded-[2rem] border border-[#8B9D83]/20 shadow-sm space-y-4 mb-6 text-slate-800 text-left">
                    <div className="flex justify-between items-center px-1">
                       <span className="text-xs font-black text-[#8B9D83] uppercase tracking-widest flex items-center gap-1"><PlusCircle size={14}/> 全域快速新增領息</span>
                       <input type="date" value={divDraft.date} onChange={e => setDivDraft({...divDraft, date: e.target.value})} className="text-xs font-black bg-white rounded-lg px-3 py-1 border border-[#8B9D83]/20 outline-none shadow-sm cursor-pointer" />
                    </div>
                    <div className="flex flex-wrap md:flex-nowrap gap-3 items-center text-slate-800">
-                      <div className="flex flex-[2] gap-2">
+                      <div className="flex flex-[2] gap-2 text-slate-800">
                         <select value={divDraft.member} onChange={e => setDivDraft({...divDraft, member: e.target.value})} className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 text-slate-800 shadow-sm">
                           {members.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                         </select>
@@ -471,7 +474,7 @@ export default function App() {
                           {symbols.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                         </select>
                       </div>
-                      <div className="flex flex-1 gap-3 items-center">
+                      <div className="flex flex-1 gap-3 items-center text-slate-800">
                         <div className="flex-1 flex items-center bg-white border border-[#8B9D83]/20 rounded-xl px-3 py-1 shadow-inner">
                             <span className="text-[10px] text-[#8B9D83] font-black mr-1">NT$</span>
                             <CompactNumberInput value={divDraft.amount} onChange={v => setDivDraft({...divDraft, amount: v})} className="w-full text-right border-none shadow-none focus:ring-0 text-sm font-black" />
@@ -483,67 +486,47 @@ export default function App() {
                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-slate-800">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-slate-800 text-left">
                   {symbols.map(s => {
                     const divList = dividends.filter(d => d.symbol === s.name && (filterMember === 'all' || d.member === filterMember));
                     const hasInvested = transactions.some(t => t.symbol === s.name);
                     if (!hasInvested && divList.length === 0 && divExpanded !== s.name) return null;
-
                     const currentDraft = divDrafts[s.name] || { amount: '0', member: members[0]?.name || '', date: new Date().toISOString().split('T')[0] };
-
                     return (
                       <div key={s.name} className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100 h-fit text-slate-800 text-left">
-                        <div 
-                          className="p-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center cursor-pointer hover:bg-blue-100 transition-colors text-slate-800" 
-                          onClick={() => setDivExpanded(divExpanded === s.name ? null : s.name)}
-                        >
-                          <span className="text-base font-black uppercase tracking-wide text-slate-800">{s.name} <span className="text-xs opacity-40">({divList.length})</span></span>
+                        <div className="p-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center cursor-pointer hover:bg-blue-100 transition-colors text-slate-800" onClick={() => setDivExpanded(divExpanded === s.name ? null : s.name)}>
+                          <span className="text-base font-black text-slate-800 uppercase tracking-wide">{s.name} <span className="text-xs opacity-40">({divList.length})</span></span>
                           <div className="text-slate-400">{divExpanded === s.name ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
                         </div>
-
                         {divExpanded === s.name && (
                           <div className="p-3 space-y-4 animate-in slide-in-from-top-2 text-slate-900">
-                            
                             <div className="bg-[#8B9D83]/10 p-3 rounded-2xl border border-[#8B9D83]/20 space-y-3 mb-2 text-slate-800 shadow-inner">
                                <div className="flex justify-between items-center">
-                                  <p className="text-[11px] font-black text-[#8B9D83] uppercase flex items-center gap-1"><PlusCircle size={12}/> 快速新增此標的領息</p>
+                                  <p className="text-[11px] font-black text-[#8B9D83] uppercase flex items-center gap-1"><PlusCircle size={12}/> 快速新增標的領息</p>
                                   <input type="date" value={currentDraft.date} onChange={e => setDivDrafts({...divDrafts, [s.name]: {...currentDraft, date: e.target.value}})} className="text-[10px] bg-transparent outline-none text-[#8B9D83] font-black cursor-pointer shadow-none" />
                                </div>
                                <div className="flex gap-2 items-center text-slate-800">
                                   <select value={currentDraft.member} onChange={e => setDivDrafts({...divDrafts, [s.name]: {...currentDraft, member: e.target.value}})} className="w-24 bg-white text-xs p-2 rounded-xl font-black border border-[#8B9D83]/20 outline-none text-slate-800 shadow-sm">
                                     {members.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                                   </select>
-                                  <div className="flex-1 flex items-center bg-white border border-[#8B9D83]/20 rounded-xl px-3 py-1 shadow-inner text-slate-800">
-                                      <span className="text-[10px] text-[#8B9D83] font-black mr-1">NT$</span>
+                                  <div className="flex-1 flex items-center bg-white border border-[#8B9D83]/20 rounded-xl px-3 py-1 shadow-inner text-slate-800 text-left">
+                                      <span className="text-[10px] text-[#8B9D83] font-black mr-1 text-left">NT$</span>
                                       <CompactNumberInput placeholder="金額" value={currentDraft.amount} onChange={v => setDivDrafts({...divDrafts, [s.name]: {...currentDraft, amount: v}})} className="w-full text-right bg-transparent border-none shadow-none focus:ring-0 font-black text-sm" />
                                   </div>
-                                  <button 
-                                    onClick={async () => {
-                                      await safeAddDoc('dividends', { ...currentDraft, symbol: s.name });
-                                      setDivDrafts({...divDrafts, [s.name]: {...currentDraft, amount: '0'}});
-                                    }}
-                                    className="bg-[#8B9D83] text-white p-2 rounded-xl shadow active:scale-90 flex items-center justify-center border border-white/20"
-                                  >
-                                    <Send size={16} />
-                                  </button>
+                                  <button onClick={async () => { await safeAddDoc('dividends', { ...currentDraft, symbol: s.name }); setDivDrafts({...divDrafts, [s.name]: {...currentDraft, amount: '0'}}); }} className="bg-[#8B9D83] text-white p-2 rounded-xl shadow active:scale-90 flex items-center justify-center border border-white/20"><Send size={16} /></button>
                                </div>
                             </div>
-
-                            <div className="border-t border-slate-100 pt-3 space-y-3 text-slate-800">
+                            <div className="border-t border-slate-100 pt-3 space-y-3 text-slate-800 text-left">
                               {divList.sort((a,b) => b.date.localeCompare(a.date)).map(d => {
                                 const draft = editDiv[d.id] || d;
                                 const hasChanged = JSON.stringify(draft) !== JSON.stringify(d);
                                 return (
                                   <div key={d.id} className={`p-4 rounded-[1.5rem] border-2 transition-all relative ${hasChanged ? 'border-amber-300 bg-amber-50/20 shadow-md scale-[1.01]' : 'border-slate-50 bg-white shadow-sm'}`}>
-                                    <div className="flex justify-between items-start mb-2 text-slate-800">
+                                    <div className="flex justify-between items-start mb-2 text-slate-800 text-left">
                                       <input type="date" value={draft.date} onChange={(e) => setEditDiv({...editDiv, [d.id]: {...draft, date: e.target.value}})} className="text-xs font-black outline-none bg-transparent text-slate-500 cursor-pointer" />
                                       <div className="flex items-center gap-1">
-                                        {hasChanged && ( 
-                                          <button onClick={() => handleUpdate('dividends', d.id, draft)} className="bg-emerald-600 text-white px-2 py-0.5 rounded-lg shadow-md animate-pulse">
-                                            <Check size={12}/> <span className="text-[10px] font-black">存</span>
-                                          </button> 
-                                        )}
-                                        <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'dividends', d.id))} className="text-slate-300 hover:text-red-500 p-1 transition-all"><Trash2 size={16}/></button>
+                                        {hasChanged && ( <button onClick={() => handleUpdate('dividends', d.id, draft)} className="bg-emerald-600 text-white px-2 py-0.5 rounded-lg shadow-md animate-pulse"><Check size={12}/> <span className="text-[10px] font-black text-white text-left">存</span></button> )}
+                                        <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'dividends', d.id))} className="text-slate-300 hover:text-red-500 p-0.5 transition-all text-left"><Trash2 size={16}/></button>
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-3 text-slate-800">
@@ -575,22 +558,14 @@ export default function App() {
           <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-300 text-slate-900 pb-16 text-left">
             <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-sm space-y-10 border border-slate-50 text-left">
                <div className="space-y-4 text-left">
-                 <h3 className="font-black text-xs md:text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2 text-left mx-auto md:mx-0"><Users size={20}/> 人員管理中心</h3>
-                 <div className="flex gap-2 max-w-sm">
-                   <input 
-                     placeholder="輸入姓名 (例如: 媽媽)" 
-                     className="flex-1 py-3 px-5 text-base font-black text-slate-800 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ring-[#8B9D83]/20 shadow-inner" 
-                     value={newMemName}
-                     onChange={e => setNewMemName(e.target.value)}
-                   />
-                   <button 
-                    onClick={async () => { if(newMemName.trim()) { await safeAddDoc('members', { name: newMemName.trim() }); setNewMemName(""); } }} 
-                    className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-base shadow-xl active:scale-90 transition-all hover:bg-blue-700"
-                   >建立</button>
+                 <h3 className="font-black text-xs md:text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2 text-left mx-auto md:mx-0 text-slate-800"><Users size={20}/> 人員管理中心</h3>
+                 <div className="flex gap-2 max-w-sm text-left">
+                   <input placeholder="輸入姓名 (例如: 媽媽)" className="flex-1 py-3 px-5 text-base font-black text-slate-800 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ring-[#8B9D83]/20 shadow-inner" value={newMemName} onChange={e => setNewMemName(e.target.value)} />
+                   <button onClick={async () => { if(newMemName.trim()) { await safeAddDoc('members', { name: newMemName.trim() }); setNewMemName(""); } }} className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-base shadow-xl active:scale-90 transition-all hover:bg-blue-700">建立</button>
                  </div>
                  <div className="flex flex-wrap gap-2 pt-2">
                    {members.map(m => (
-                     <span key={m.id} className="bg-blue-50 text-sm font-black text-blue-800 px-6 py-3 rounded-2xl border border-blue-100 flex items-center gap-3 group shadow-sm transition-all hover:bg-blue-100">
+                     <span key={m.id} className="bg-blue-50 text-sm font-black text-blue-800 px-6 py-3 rounded-2xl border border-blue-100 flex items-center gap-3 group shadow-sm">
                        {m.name}
                        <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'members', m.id))} className="text-blue-300 hover:text-red-500 font-black px-1 transition-colors text-lg">×</button>
                      </span>
@@ -601,16 +576,8 @@ export default function App() {
                <div className="border-t border-slate-100 pt-8 space-y-4 text-left text-slate-800">
                  <h3 className="font-black text-xs md:text-sm text-slate-400 uppercase tracking-widest flex items-center gap-2 text-left mx-auto md:mx-0 text-slate-800"><Globe size={20}/> 標的管理中心</h3>
                  <div className="flex gap-2 max-w-sm text-left">
-                   <input 
-                     placeholder="標的代碼 (例如: 0050)" 
-                     className="flex-1 uppercase py-3 px-5 text-base font-black text-slate-800 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ring-[#8B9D83]/20 shadow-inner" 
-                     value={newSymName}
-                     onChange={e => setNewSymName(e.target.value.toUpperCase())}
-                   />
-                   <button 
-                    onClick={async () => { if(newSymName.trim()) { await safeAddDoc('symbols', { name: newSymName.trim(), currentPrice: 0 }); setNewSymName(""); } }} 
-                    className="bg-[#8B9D83] text-white px-8 py-3 rounded-2xl font-black text-base shadow-xl active:scale-90 transition-all hover:bg-[#7A8C72]"
-                   >新增</button>
+                   <input placeholder="標的代碼 (例如: 0050)" className="flex-1 uppercase py-3 px-5 text-base font-black text-slate-800 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ring-[#8B9D83]/20 shadow-inner" value={newSymName} onChange={e => setNewSymName(e.target.value.toUpperCase())} />
+                   <button onClick={async () => { if(newSymName.trim()) { await safeAddDoc('symbols', { name: newSymName.trim(), currentPrice: 0 }); setNewSymName(""); } }} className="bg-[#8B9D83] text-white px-8 py-3 rounded-2xl font-black text-base shadow-xl active:scale-90 transition-all hover:bg-[#7A8C72]">新增</button>
                  </div>
                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-slate-800">
                    {symbols.map(s => {
@@ -619,17 +586,13 @@ export default function App() {
                        <div key={s.id} className={`p-5 rounded-[2rem] border-2 transition-all ${hasChanged ? 'border-amber-300 bg-amber-50/20 shadow-md scale-[1.05]' : 'bg-white border-slate-100 shadow-sm hover:border-slate-300'}`}>
                          <div className="flex justify-between items-center mb-2 text-slate-800">
                             <span className="text-sm font-black uppercase text-slate-800 tracking-wider">{s.name}</span>
-                            <div className="flex items-center gap-1 text-slate-800">
-                               {hasChanged && ( 
-                                 <button onClick={() => handleUpdate('symbols', s.id, draft)} className="bg-emerald-600 text-white p-1.5 rounded-lg shadow-md border border-emerald-500/10">
-                                   <Check size={14}/>
-                                 </button> 
-                               )}
+                            <div className="flex items-center gap-1 text-slate-800 text-slate-800">
+                               {hasChanged && ( <button onClick={() => handleUpdate('symbols', s.id, draft)} className="bg-emerald-600 text-white p-1.5 rounded-lg shadow-md border border-emerald-500/10"><Check size={14}/></button> )}
                                <button onClick={() => deleteDoc(doc(db, 'artifacts', currentAppId, 'users', user.uid, 'symbols', s.id))} className="text-slate-300 hover:text-red-500 transition-all p-1 text-[16px] font-black">×</button>
                             </div>
                          </div>
-                         <div className="flex items-center gap-2 pt-2 border-t border-slate-50 text-slate-800">
-                           <span className="text-[10px] text-slate-400 font-black uppercase">市價</span>
+                         <div className="flex items-center gap-2 pt-2 border-t border-slate-50 text-slate-800 text-left">
+                           <span className="text-[10px] text-slate-400 font-black uppercase text-left">市價</span>
                            <CompactNumberInput value={draft.currentPrice} onChange={v => setEditSym({...editSym, [s.id]: {...draft, currentPrice: v}})} className="w-full text-center font-mono text-[#8B9D83] border-none shadow-none focus:ring-0 px-0 text-base shadow-none" placeholder="0" />
                          </div>
                        </div>
@@ -637,29 +600,15 @@ export default function App() {
                    })}
                  </div>
                </div>
-
-               <div className="border-t-2 border-[#8B9D83]/10 pt-10 pb-6 text-center mx-auto text-slate-800">
-                 <div className="inline-block group mx-auto">
-                   <a href="https://nayomoney.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-[#8B9D83]/10 px-8 py-5 rounded-[2rem] border-2 border-transparent group-hover:border-[#8B9D83]/20 transition-all shadow-md active:scale-95 mx-auto">
-                     <div className="bg-[#8B9D83] p-3 rounded-3xl text-white shadow-lg group-hover:rotate-12 transition-transform">
-                       <Heart size={26} fill="white" />
-                     </div>
-                     <div className="text-left leading-tight">
-                       <p className="text-[#8B9D83] font-black text-base md:text-lg text-left">推薦服務：nayomoney.com</p>
-                       <p className="text-xs text-slate-500 font-bold mt-1.5 text-left text-slate-800 opacity-60">探索更多財務自由密碼</p>
-                     </div>
-                     <ExternalLink size={20} className="text-[#8B9D83] opacity-30 group-hover:opacity-100 transition-opacity ml-4" />
-                   </a>
-                 </div>
-               </div>
             </div>
           </div>
         )}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none md:pb-6 md:px-12 lg:px-24">
-        <div className="max-w-7xl mx-auto w-full flex justify-center md:justify-end pointer-events-auto">
-          <div className="bg-white/90 backdrop-blur-md border border-slate-200 px-5 md:px-10 py-1.5 shadow-[0_-8px_40px_rgba(0,0,0,0.1)] flex justify-around items-center h-12 md:h-14 w-full md:w-fit md:rounded-full md:gap-12 animate-in slide-in-from-bottom-10 duration-700 text-slate-900">
+      {/* 底部導覽 - 優化 iPhone 安全區域與溢出問題 */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none pb-safe">
+        <div className="max-w-7xl mx-auto w-full flex justify-center md:justify-end pointer-events-auto p-4 md:p-8">
+          <div className="bg-white/95 backdrop-blur-md border border-slate-200 px-5 py-2 shadow-2xl flex justify-around items-center h-14 md:h-16 w-full md:w-fit md:rounded-full md:gap-12 animate-in slide-in-from-bottom-10 duration-700 text-slate-900">
             <NavBtn active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={<Activity size={24}/>} label="監測" />
             <NavBtn active={activeTab === 'dividends'} onClick={() => setActiveTab('dividends')} icon={<DollarSign size={24}/>} label="領息" />
             <NavBtn active={activeTab === 'invest'} onClick={() => setActiveTab('invest')} icon={<TrendingUp size={24}/>} label="投入" />
@@ -673,22 +622,22 @@ export default function App() {
 
 // --- 子組件 ---
 const SetupGuide = ({ onGo }) => (
-  <div className="bg-white p-14 rounded-[4rem] text-center space-y-6 shadow-2xl border border-amber-50 animate-in zoom-in max-w-xl mx-auto mt-12 text-slate-800 mx-auto">
-    <div className="bg-amber-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto text-amber-500 shadow-inner mb-3 text-amber-500"><AlertCircle size={56} /></div>
-    <div className="space-y-2 text-center mx-auto text-slate-800">
-      <h3 className="text-3xl font-black tracking-tight text-center text-slate-800">尚未完成初始化</h3>
-      <p className="text-base text-slate-500 font-bold px-8 leading-relaxed text-center text-slate-800">請前往「管理」分頁建立人員與標的。</p>
+  <div className="bg-white p-14 rounded-[4rem] text-center space-y-6 shadow-2xl border border-amber-50 animate-in zoom-in max-w-xl mx-auto mt-12 text-slate-800 mx-auto text-left">
+    <div className="bg-amber-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto text-amber-500 shadow-inner mb-3 text-amber-500 text-center"><AlertCircle size={56} /></div>
+    <div className="space-y-2 text-center mx-auto text-slate-800 text-center">
+      <h3 className="text-3xl font-black tracking-tight text-center text-slate-800 text-center">尚未完成初始化</h3>
+      <p className="text-base text-slate-500 font-bold px-8 leading-relaxed text-center text-slate-800 text-center">請前往「管理」分頁建立人員與標的。</p>
     </div>
-    <button onClick={onGo} className="bg-blue-600 text-white w-full max-w-xs py-5 rounded-[2rem] font-black text-xl shadow-xl active:scale-95 transition-all mx-auto tracking-widest uppercase flex items-center justify-center gap-3">立即前往 <ArrowRight size={24}/></button>
+    <button onClick={onGo} className="bg-blue-600 text-white w-full max-w-xs py-5 rounded-[2rem] font-black text-xl shadow-xl active:scale-95 transition-all mx-auto tracking-widest uppercase flex items-center justify-center gap-3 text-center">立即前往 <ArrowRight size={24}/></button>
   </div>
 );
 
 const NavBtn = ({ active, onClick, icon, label }) => (
-  <button onClick={onClick} className={`flex flex-col items-center justify-center gap-0.5 transition-all duration-300 px-4 ${active ? 'text-[#8B9D83] scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+  <button onClick={onClick} className={`flex flex-col items-center justify-center gap-0.5 transition-all duration-300 px-3 ${active ? 'text-[#8B9D83] scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
     <div className={`${active ? 'bg-[#8B9D83]/10 p-2 rounded-2xl shadow-sm' : 'p-2'} transition-all`}>
       {icon}
     </div>
-    <span className={`text-[11px] md:text-sm font-black tracking-widest leading-none ${active ? 'text-[#8B9D83]' : 'text-slate-500'}`}>{label}</span>
+    <span className={`text-[10px] md:text-sm font-black tracking-widest leading-none ${active ? 'text-[#8B9D83]' : 'text-slate-500'}`}>{label}</span>
   </button>
 );
 
@@ -697,6 +646,6 @@ const StatCard = ({ title, value, sub, color }) => (
     <div className="absolute top-0 left-0 w-full h-1.5" style={{ backgroundColor: color, opacity: 0.4 }}></div>
     <p className="text-[11px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none text-slate-800">{title}</p>
     <p className={`text-3xl md:text-5xl font-mono font-black tracking-tighter leading-none text-slate-800`} style={{ color }}>{value}</p>
-    <p className="text-[9px] md:text-[11px] text-slate-400 font-black italic tracking-wider uppercase opacity-80 mt-4 leading-none text-slate-800">{sub}</p>
+    <p className="text-[9px] md:text-[11px] text-slate-400 font-black italic tracking-wider uppercase opacity-80 mt-4 leading-none text-slate-800 text-center">{sub}</p>
   </div>
 );
