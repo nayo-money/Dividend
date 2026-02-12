@@ -75,7 +75,7 @@ const CompactNumberInput = ({ value, onChange, className, placeholder, ...props 
   const handleBlur = (e) => {
     if (e.target.value === "") onChange("0");
   };
-  
+
   return (
     <input
       {...props}
@@ -311,7 +311,7 @@ export default function App() {
         {activeTab === 'overview' && (
           <div className="space-y-5 animate-in fade-in duration-300">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-center text-slate-800">
-              <StatCard title="總投入" value={`$${Math.round(stats.totalCost).toLocaleString()}`} sub="成本本金" color="#4A4A4A" valueClass="text-2xl md:text-4xl" />
+              <StatCard title="總投入" value={`$${Math.round(stats.totalCost).toLocaleString()}`} sub="成本本金" color="#4A4A4A" />
               <StatCard title="總市值" value={`$${Math.round(stats.totalMarketValue).toLocaleString()}`} sub="目前價值" color="#3B82F6" />
               <StatCard title="回本率" value={`${stats.recovery.toFixed(2)}%`} sub="回收比重" color="#8B9D83" />
               <StatCard title="總報酬" value={`${stats.overallReturn.toFixed(1)}%`} sub="含息累積" color={stats.overallReturn >= 0 ? "#10B981" : "#EF4444"} />
@@ -423,19 +423,11 @@ export default function App() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-slate-800 text-left">
                   {symbols.map(s => {
                     const txList = transactions.filter(t => t.symbol === s.name && (filterMember === 'all' || t.member === filterMember));
-                    const txSum = txList.reduce((sum, t) => sum + parseFloat(t.cost || 0), 0);
-
                     if (txList.length === 0 && investExpanded !== s.name) return null;
                     return (
                       <div key={s.name} className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100 h-fit transition-all hover:shadow-md text-slate-800 text-left">
                         <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors text-slate-800 text-left" onClick={() => setInvestExpanded(investExpanded === s.name ? null : s.name)}>
-<span className="text-base font-black uppercase tracking-wide text-slate-800 text-left">
-  {s.name}
-  <span className="text-xs font-black text-slate-500 ml-2">
-    $ {Math.round(txSum).toLocaleString()}
-  </span>
-</span>
-
+                          <span className="text-base font-black uppercase tracking-wide text-slate-800 text-left">{s.name} <span className="text-xs opacity-40 text-left">({txList.length})</span></span>
                           <div className="text-slate-400 text-left text-slate-800">{investExpanded === s.name ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}</div>
                         </div>
                         {investExpanded === s.name && (
@@ -685,11 +677,11 @@ export default function App() {
   );
 }
 
-const StatCard = ({ title, value, sub, color, valueClass }) => (
+const StatCard = ({ title, value, sub, color }) => (
   <div className="bg-white p-6 md:p-10 rounded-[3rem] shadow-sm border border-[#D9C5B2]/10 active:scale-95 transition-transform text-center relative overflow-hidden group hover:shadow-xl mx-auto text-slate-800 text-center">
     <div className="absolute top-0 left-0 w-full h-1.5" style={{ backgroundColor: color, opacity: 0.4 }}></div>
     <p className="text-[11px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center">{title}</p>
-    <p className={`${valueClass ? valueClass : "text-3xl md:text-5xl"} font-mono font-black tracking-tight leading-none`} style={{ color }}>
+    <p className={`text-3xl md:text-5xl font-mono font-black tracking-tighter leading-none text-center text-slate-800 text-center text-slate-800 text-center text-slate-800 text-center text-slate-800 text-center text-slate-800 text-center`} style={{ color }}>{value}</p>
     <p className="text-[9px] md:text-[11px] text-slate-400 font-black italic tracking-wider uppercase opacity-80 mt-4 leading-none text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center">{sub}</p>
   </div>
 );
