@@ -86,7 +86,7 @@ const StatCard = ({ title, value, sub, color }) => (
     </p>
 
     {/* 數字：變小 */}
-    <p className="text-2xl md:text-4xl font-mono font-black tracking-tight leading-none" style={{ color }}>
+    <p className="text-2xl md:text-3xl font-mono font-black tracking-tight leading-none" style={{ color }}>
       {value}
     </p>
 
