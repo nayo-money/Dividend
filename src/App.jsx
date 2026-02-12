@@ -75,28 +75,6 @@ const CompactNumberInput = ({ value, onChange, className, placeholder, ...props 
   const handleBlur = (e) => {
     if (e.target.value === "") onChange("0");
   };
-
-const StatCard = ({ title, value, sub, color }) => (
-  <div className="bg-white p-4 md:p-6 rounded-[2.5rem] shadow-sm border border-[#D9C5B2]/10 active:scale-95 transition-transform text-center relative overflow-hidden group hover:shadow-xl mx-auto text-slate-800">
-    <div className="absolute top-0 left-0 w-full h-1.5" style={{ backgroundColor: color, opacity: 0.4 }}></div>
-
-    {/* 標題：變小 */}
-    <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 leading-none">
-      {title}
-    </p>
-
-    {/* 數字：變小 */}
-    <p className="text-2xl md:text-3xl font-mono font-black tracking-tight leading-none" style={{ color }}>
-      {value}
-    </p>
-
-    {/* 底部：變小 */}
-    <p className="text-[8px] md:text-[10px] text-slate-400 font-black italic tracking-wider uppercase opacity-80 mt-3 leading-none">
-      {sub}
-    </p>
-  </div>
-);
-
   
   return (
     <input
@@ -332,7 +310,7 @@ export default function App() {
       <main className="max-w-7xl mx-auto p-3 md:p-6 lg:p-12 space-y-4 lg:space-y-8 text-slate-900">
         {activeTab === 'overview' && (
           <div className="space-y-5 animate-in fade-in duration-300">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 text-center text-slate-800">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-5 text-center text-slate-800">
               <StatCard title="總投入" value={`$${Math.round(stats.totalCost).toLocaleString()}`} sub="成本本金" color="#4A4A4A" />
               <StatCard title="總市值" value={`$${Math.round(stats.totalMarketValue).toLocaleString()}`} sub="目前價值" color="#3B82F6" />
               <StatCard title="回本率" value={`${stats.recovery.toFixed(2)}%`} sub="回收比重" color="#8B9D83" />
