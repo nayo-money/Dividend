@@ -333,6 +333,10 @@ export default function App() {
                           </div>
                           <div className="text-right">
                              <span className="text-[#8B9D83] font-mono font-black text-lg block leading-none">回本 {((p.div/Math.max(p.cost, 1))*100).toFixed(2)}%</span>
+                              {/* ✅ 新增：領息總額 */}
+                             <span className="text-[10px] font-black text-slate-500 block mt-1 text-right">
+                                領息總額: NT$ {Math.round(p.div).toLocaleString()}
+                             </span>
                              <span className="text-[10px] font-black text-slate-400 block mt-1 text-right">
                                總成本: ${p.cost.toLocaleString()} | <span className={p.returnIncDiv >= 0 ? 'text-emerald-600' : 'text-red-500'}>含息: {p.returnIncDiv.toFixed(1)}%</span>
                              </span>
