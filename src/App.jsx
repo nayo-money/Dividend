@@ -485,66 +485,74 @@ export default function App() {
                       <span className="text-xs font-black text-[#8B9D83] uppercase tracking-widest flex items-center gap-1 text-left text-slate-800 text-left text-slate-800"><PlusCircle size={14}/> 全域快速新增領息</span>
                       <input type="date" value={divDraft.date} onChange={e => setDivDraft({...divDraft, date: e.target.value})} className="text-xs font-black bg-white rounded-lg px-3 py-1 border border-[#8B9D83]/20 outline-none shadow-sm cursor-pointer text-slate-800 text-left text-slate-800" />
                    </div>
-<div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-  {/* 左：成員 / 標的 */}
-  <div className="flex w-full md:flex-[2] gap-2">
-    <select
-      value={divDraft.member}
-      onChange={(e) => setDivDraft({ ...divDraft, member: e.target.value })}
-      className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 text-slate-900 shadow-sm"
-    >
-      {members.map((m) => (
-        <option key={m.id} value={m.name} className="text-slate-900">
-          {m.name}
-        </option>
-      ))}
-    </select>
-
-    <select
-      value={divDraft.symbol}
-      onChange={(e) => setDivDraft({ ...divDraft, symbol: e.target.value })}
-      className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 text-slate-900 shadow-sm uppercase"
-    >
-      {symbols.map((s) => (
-        <option key={s.id} value={s.name} className="text-slate-900">
-          {s.name}
-        </option>
-      ))}
-    </select>
-  </div>
-
-  {/* 右：金額 + 送出 */}
-  <div className="flex w-full md:flex-1 gap-3 items-center">
-    <div className="flex-1 min-w-[180px] flex items-center bg-white border border-[#8B9D83]/20 rounded-xl px-3 py-2 shadow-inner">
-      <span className="text-[10px] text-[#8B9D83] font-black mr-2">NT$</span>
-      <CompactNumberInput
-        value={divDraft.amount}
-        onChange={(v) => setDivDraft({ ...divDraft, amount: v })}
-        className="w-full text-right border-none shadow-none focus:ring-0 text-base md:text-sm font-black"
-      />
-    </div>
-
-    <button
-      onClick={() => safeAddDoc('dividends', divDraft)}
-      className="shrink-0 bg-[#8B9D83] text-white p-3 rounded-2xl shadow-lg active:scale-90 hover:bg-[#7A8C72] transition-all flex items-center justify-center border-2 border-white/20"
-    >
-      <Send size={18} />
-    </button>
-  </div>
-</div>
+                  <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+                    {/* 左：成員 / 標的 */}
+                    <div className="flex w-full md:flex-[2] gap-2">
+                      <select
+                        value={divDraft.member}
+                        onChange={(e) => setDivDraft({ ...divDraft, member: e.target.value })}
+                        className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 text-slate-900 shadow-sm"
+                      >
+                        {members.map((m) => (
+                          <option key={m.id} value={m.name} className="text-slate-900">
+                            {m.name}
+                          </option>
+                        ))}
+                      </select>
+                  
+                      <select
+                        value={divDraft.symbol}
+                        onChange={(e) => setDivDraft({ ...divDraft, symbol: e.target.value })}
+                        className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 text-slate-900 shadow-sm uppercase"
+                      >
+                        {symbols.map((s) => (
+                          <option key={s.id} value={s.name} className="text-slate-900">
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  
+                    {/* 右：金額 + 送出 */}
+                    <div className="flex w-full md:flex-1 gap-3 items-center">
+                      <div className="flex-1 min-w-[180px] flex items-center bg-white border border-[#8B9D83]/20 rounded-xl px-3 py-2 shadow-inner">
+                        <span className="text-[10px] text-[#8B9D83] font-black mr-2">NT$</span>
+                        <CompactNumberInput
+                          value={divDraft.amount}
+                          onChange={(v) => setDivDraft({ ...divDraft, amount: v })}
+                          className="w-full text-right border-none shadow-none focus:ring-0 text-base md:text-sm font-black"
+                        />
+                      </div>
+                  
+                      <button
+                        onClick={() => safeAddDoc('dividends', divDraft)}
+                        className="shrink-0 bg-[#8B9D83] text-white p-3 rounded-2xl shadow-lg active:scale-90 hover:bg-[#7A8C72] transition-all flex items-center justify-center border-2 border-white/20"
+                      >
+                        <Send size={18} />
+                      </button>
+                    </div>
+                  </div>
 
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-slate-800 text-left text-slate-800 text-left">
                   {symbols.map(s => {
                     const divList = dividends.filter(d => d.symbol === s.name && (filterMember === 'all' || d.member === filterMember));
+                    const divSum = divList.reduce((sum, d) => sum + parseFloat(d.amount || 0), 0);
+
                     const hasInvested = transactions.some(t => t.symbol === s.name);
                     if (!hasInvested && divList.length === 0 && divExpanded !== s.name) return null;
                     const currentDraft = divDrafts[s.name] || { amount: '0', member: members[0]?.name || '', date: new Date().toISOString().split('T')[0] };
                     return (
                       <div key={s.name} className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100 h-fit text-slate-800 text-left text-slate-800 text-left">
                         <div className="p-4 bg-blue-50 border-b border-blue-100 flex justify-between items-center cursor-pointer hover:bg-blue-100 transition-colors text-slate-800 text-left text-slate-800 text-left text-slate-800" onClick={() => setDivExpanded(divExpanded === s.name ? null : s.name)}>
-                          <span className="text-base font-black uppercase tracking-wide text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left">{s.name} <span className="text-xs opacity-40 text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left">({divList.length})</span></span>
+<span className="text-base font-black uppercase tracking-wide text-left text-slate-800">
+  {s.name}
+  <span className="text-xs font-black text-slate-500 ml-2">
+    NT$ {Math.round(divSum).toLocaleString()}
+  </span>
+</span>
+
                           <div className="text-slate-400 text-left text-slate-800 text-slate-800 text-left text-slate-800 text-left">{divExpanded === s.name ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
                         </div>
                         {divExpanded === s.name && (
