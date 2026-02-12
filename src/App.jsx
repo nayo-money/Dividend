@@ -423,11 +423,19 @@ export default function App() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-slate-800 text-left">
                   {symbols.map(s => {
                     const txList = transactions.filter(t => t.symbol === s.name && (filterMember === 'all' || t.member === filterMember));
+                    const txSum = txList.reduce((sum, t) => sum + parseFloat(t.cost || 0), 0);
+
                     if (txList.length === 0 && investExpanded !== s.name) return null;
                     return (
                       <div key={s.name} className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100 h-fit transition-all hover:shadow-md text-slate-800 text-left">
                         <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors text-slate-800 text-left" onClick={() => setInvestExpanded(investExpanded === s.name ? null : s.name)}>
-                          <span className="text-base font-black uppercase tracking-wide text-slate-800 text-left">{s.name} <span className="text-xs opacity-40 text-left">({txList.length})</span></span>
+<span className="text-base font-black uppercase tracking-wide text-slate-800 text-left">
+  {s.name}
+  <span className="text-xs font-black text-slate-500 ml-2">
+    $ {Math.round(txSum).toLocaleString()}
+  </span>
+</span>
+
                           <div className="text-slate-400 text-left text-slate-800">{investExpanded === s.name ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}</div>
                         </div>
                         {investExpanded === s.name && (
