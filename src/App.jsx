@@ -486,23 +486,40 @@ export default function App() {
                       <input type="date" value={divDraft.date} onChange={e => setDivDraft({...divDraft, date: e.target.value})} className="text-xs font-black bg-white rounded-lg px-3 py-1 border border-[#8B9D83]/20 outline-none shadow-sm cursor-pointer text-slate-800 text-left text-slate-800" />
                    </div>
 <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-  {/* 左：成員/標的（手機也滿寬） */}
+  {/* 左：成員 / 標的 */}
   <div className="flex w-full md:flex-[2] gap-2">
-    <select ... className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 text-slate-900 shadow-sm">
-      ...
+    <select
+      value={divDraft.member}
+      onChange={(e) => setDivDraft({ ...divDraft, member: e.target.value })}
+      className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 text-slate-900 shadow-sm"
+    >
+      {members.map((m) => (
+        <option key={m.id} value={m.name} className="text-slate-900">
+          {m.name}
+        </option>
+      ))}
     </select>
-    <select ... className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 text-slate-900 shadow-sm uppercase">
-      ...
+
+    <select
+      value={divDraft.symbol}
+      onChange={(e) => setDivDraft({ ...divDraft, symbol: e.target.value })}
+      className="flex-1 bg-white text-sm py-2 px-3 rounded-xl font-black border border-[#8B9D83]/20 text-slate-900 shadow-sm uppercase"
+    >
+      {symbols.map((s) => (
+        <option key={s.id} value={s.name} className="text-slate-900">
+          {s.name}
+        </option>
+      ))}
     </select>
   </div>
 
-  {/* 右：金額 + 送出（手機不被擠小） */}
+  {/* 右：金額 + 送出 */}
   <div className="flex w-full md:flex-1 gap-3 items-center">
     <div className="flex-1 min-w-[180px] flex items-center bg-white border border-[#8B9D83]/20 rounded-xl px-3 py-2 shadow-inner">
       <span className="text-[10px] text-[#8B9D83] font-black mr-2">NT$</span>
       <CompactNumberInput
         value={divDraft.amount}
-        onChange={v => setDivDraft({...divDraft, amount: v})}
+        onChange={(v) => setDivDraft({ ...divDraft, amount: v })}
         className="w-full text-right border-none shadow-none focus:ring-0 text-base md:text-sm font-black"
       />
     </div>
