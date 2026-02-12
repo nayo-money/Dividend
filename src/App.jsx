@@ -76,6 +76,28 @@ const CompactNumberInput = ({ value, onChange, className, placeholder, ...props 
     if (e.target.value === "") onChange("0");
   };
 
+const StatCard = ({ title, value, sub, color }) => (
+  <div className="bg-white p-4 md:p-6 rounded-[2.5rem] shadow-sm border border-[#D9C5B2]/10 active:scale-95 transition-transform text-center relative overflow-hidden group hover:shadow-xl mx-auto text-slate-800">
+    <div className="absolute top-0 left-0 w-full h-1.5" style={{ backgroundColor: color, opacity: 0.4 }}></div>
+
+    {/* 標題：變小 */}
+    <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 leading-none">
+      {title}
+    </p>
+
+    {/* 數字：變小 */}
+    <p className="text-2xl md:text-4xl font-mono font-black tracking-tight leading-none" style={{ color }}>
+      {value}
+    </p>
+
+    {/* 底部：變小 */}
+    <p className="text-[8px] md:text-[10px] text-slate-400 font-black italic tracking-wider uppercase opacity-80 mt-3 leading-none">
+      {sub}
+    </p>
+  </div>
+);
+
+  
   return (
     <input
       {...props}
