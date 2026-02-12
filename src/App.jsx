@@ -681,7 +681,7 @@ const StatCard = ({ title, value, sub, color }) => (
   <div className="bg-white p-6 md:p-10 rounded-[3rem] shadow-sm border border-[#D9C5B2]/10 active:scale-95 transition-transform text-center relative overflow-hidden group hover:shadow-xl mx-auto text-slate-800 text-center">
     <div className="absolute top-0 left-0 w-full h-1.5" style={{ backgroundColor: color, opacity: 0.4 }}></div>
     <p className="text-[11px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center">{title}</p>
-    <p className={`text-3xl md:text-5xl font-mono font-black tracking-tighter leading-none text-center text-slate-800 text-center text-slate-800 text-center text-slate-800 text-center text-slate-800 text-center text-slate-800 text-center`} style={{ color }}>{value}</p>
+    <p className={`text-3xl md:text-3xl font-mono font-black tracking-tighter leading-none text-center text-slate-800 text-center text-slate-800 text-center text-slate-800 text-center text-slate-800 text-center text-slate-800 text-center`} style={{ color }}>{value}</p>
     <p className="text-[9px] md:text-[11px] text-slate-400 font-black italic tracking-wider uppercase opacity-80 mt-4 leading-none text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center text-slate-400 text-center">{sub}</p>
   </div>
 );
